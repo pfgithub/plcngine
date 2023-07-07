@@ -124,6 +124,7 @@ const Render = struct {
     //camera_center: Vec2f,
     alloc: std.mem.Allocator,
     remap_colors_shader: ray.Shader,
+    center_offset: Vec2i = .{0, 0},
 
     world: *World,
 
@@ -149,8 +150,7 @@ const Render = struct {
     }
 
     fn screenToWorldPos(render: *Render, screen_pos: Vec2i) Vec2i {
-        _ = render;
-        return screen_pos;
+        return screen_pos - render.center_offset;
     }
 
     pub fn renderWorld(render: *Render) !void {
@@ -170,7 +170,11 @@ const Render = struct {
             {var chunk_x = chunk_min[0]; while(chunk_x <= chunk_max[0]) : (chunk_x += 1) {
                 const chunk_pos = Vec2i{chunk_x, chunk_y};
                 const target_chunk = try world.getOrLoadChunk(chunk_pos);
-                render.renderChunk(target_chunk, 1.0, vi2f(chunk_pos * Vec2i{CHUNK_SIZE, CHUNK_SIZE}));
+                render.renderChunk(
+                    target_chunk,
+                    1.0,
+                    vi2f(chunk_pos * Vec2i{CHUNK_SIZE, CHUNK_SIZE} + render.center_offset),
+                );
             }}
         }}
     }
@@ -230,23 +234,46 @@ pub fn main() !void {
 
     var prev_world_pos: ?Vec2i = null;
 
+    ray.DisableCursor();
+    ray.HideCursor();
+
     while(!ray.WindowShouldClose()) {
-        const mp = Vec2i{ray.GetMouseX(), ray.GetMouseY()};
-        const world_pos = render.screenToWorldPos(mp);
-        if(ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
-            if(prev_world_pos == null) prev_world_pos = world_pos;
-            var lp = math.LinePlotter.init(prev_world_pos.?, world_pos);
-            while(lp.next()) |pos| {
-                try world.setPixel(pos, 255);
+        if(ray.IsCursorHidden()) blk: {
+            if(!ray.IsWindowFocused() or ray.IsKeyPressed(ray.KEY_ESCAPE)) {
+                ray.EnableCursor();
+                ray.ShowCursor();
+                break :blk;
             }
-            prev_world_pos = world_pos;
+            const mouse_delta = ray.GetMouseDelta();
+            render.center_offset -= Vec2i{@intFromFloat(mouse_delta.x), @intFromFloat(mouse_delta.y)};
+
+            const mp = Vec2i{@divFloor(ray.GetScreenWidth(), 2), @divFloor(ray.GetScreenHeight(), 2)};
+            const world_pos = render.screenToWorldPos(mp);
+            if(ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
+                if(prev_world_pos == null) prev_world_pos = world_pos;
+                var lp = math.LinePlotter.init(prev_world_pos.?, world_pos);
+                while(lp.next()) |pos| {
+                    try world.setPixel(pos, 255);
+                }
+                prev_world_pos = world_pos;
+            }else{
+                prev_world_pos = null;
+            }
         }else{
-            prev_world_pos = null;
+            if(ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
+                ray.DisableCursor();
+                ray.HideCursor();
+            }
         }
 
         ray.BeginDrawing();
         try render.renderWorld();
         ray.DrawFPS(10, 10);
+
+        if(!ray.IsWindowFocused()) {
+            ray.DrawText("Click to focus", 20, 20, 10, .{.r = 255, .g = 0, .b = 0, .a = 255});
+        }
+
         ray.EndDrawing();
     }
 }
