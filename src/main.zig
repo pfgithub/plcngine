@@ -2,12 +2,15 @@ const std = @import("std");
 const ray = @cImport({
     @cInclude("raylib.h");
 });
+const math = @import("math.zig");
 
-const Vec2i = @Vector(2, i32);
+const Vec2i = math.Vec2i;
+const Vec2f32 = math.Vec2f32;
+const vi2f = math.vi2f;
 
 const EntityID = enum(u32) {none, _};
 
-const CHUNK_SIZE = 256; // 2048
+const CHUNK_SIZE = 2048; // 2048
 const Chunk = struct {
     chunk_pos: Vec2i,
     texture: [CHUNK_SIZE * CHUNK_SIZE]u8 = [_]u8{0} ** (CHUNK_SIZE * CHUNK_SIZE), // 8bpp image data, shader to remap colors based on entity
@@ -83,12 +86,34 @@ const World = struct {
         }
         // chunk is not loaded ; load
         // chunk file does not exist ; create
+        std.log.info("create chunk: {any}", .{chunk_pos});
         var chunk = try world.alloc.create(Chunk);
         chunk.* = .{
             .chunk_pos = chunk_pos,
         };
         try world.loaded_chunks.append(chunk);
         return chunk;
+    }
+
+    fn getPixel(world: *World, pos: Vec2i) !u8 {
+        const target_chunk = worldPosToChunkPos(pos);
+        const target_chunk_offset = target_chunk * Vec2i{CHUNK_SIZE, CHUNK_SIZE};
+        const pos_offset = pos - target_chunk_offset;
+        const chunk_value = try getOrLoadChunk(world, target_chunk);
+
+        return chunk_value.getPixel(pos_offset);
+    }
+    fn setPixel(world: *World, pos: Vec2i, value: u8) !void {
+        const target_chunk = worldPosToChunkPos(pos);
+        const target_chunk_offset = target_chunk * Vec2i{CHUNK_SIZE, CHUNK_SIZE};
+        const pos_offset = pos - target_chunk_offset;
+        const chunk_value = try getOrLoadChunk(world, target_chunk);
+
+        return chunk_value.setPixel(pos_offset, value);
+    }
+
+    fn worldPosToChunkPos(world_pos: Vec2i) Vec2i {
+        return @divFloor(world_pos, Vec2i{CHUNK_SIZE, CHUNK_SIZE});
     }
 };
 
@@ -100,7 +125,9 @@ const Render = struct {
     alloc: std.mem.Allocator,
     remap_colors_shader: ray.Shader,
 
-    fn create(alloc: std.mem.Allocator) !*Render {
+    world: *World,
+
+    fn create(alloc: std.mem.Allocator, world: *World) !*Render {
         const render = try alloc.create(Render);
         const remap_colors_shader = ray.LoadShaderFromMemory(
             @embedFile("colors.vs"),
@@ -112,6 +139,7 @@ const Render = struct {
         render.* = .{
             .alloc = alloc,
             .remap_colors_shader = remap_colors_shader,
+            .world = world,
         };
         return render;
     }
@@ -120,12 +148,34 @@ const Render = struct {
         render.alloc.destroy(render);
     }
 
-    pub fn renderWorld(render: *Render, world: *World) !void {
-        const target_chunk = try world.getOrLoadChunk(.{0, 0});
-        render.renderChunk(target_chunk);
+    fn screenToWorldPos(render: *Render, screen_pos: Vec2i) Vec2i {
+        _ = render;
+        return screen_pos;
     }
 
-    fn renderChunk(render: *Render, chunk: *Chunk) void {
+    pub fn renderWorld(render: *Render) !void {
+        const world = render.world;
+
+        const screen_size = Vec2i{ray.GetScreenWidth(), ray.GetScreenHeight()};
+        const ul = render.screenToWorldPos(.{0, 0});
+        const ur = render.screenToWorldPos(.{screen_size[0], 0});
+        const bl = render.screenToWorldPos(.{0, screen_size[1]});
+        const br = render.screenToWorldPos(.{screen_size[0], screen_size[1]});
+        const xy_min = @min(ul, ur, bl, br);
+        const xy_max = @max(ul, ur, bl, br);
+        const chunk_min = World.worldPosToChunkPos(xy_min);
+        const chunk_max = World.worldPosToChunkPos(xy_max);
+
+        {var chunk_y = chunk_min[1]; while(chunk_y <= chunk_max[1]) : (chunk_y += 1) {
+            {var chunk_x = chunk_min[0]; while(chunk_x <= chunk_max[0]) : (chunk_x += 1) {
+                const chunk_pos = Vec2i{chunk_x, chunk_y};
+                const target_chunk = try world.getOrLoadChunk(chunk_pos);
+                render.renderChunk(target_chunk, 1.0, vi2f(chunk_pos * Vec2i{CHUNK_SIZE, CHUNK_SIZE}));
+            }}
+        }}
+    }
+
+    fn renderChunk(render: *Render, chunk: *Chunk, scale: f32, offset: Vec2f32) void {
         const cri = &chunk.chunk_render_info;
         if(cri.last_updated == 0) {
             cri.gpu_texture = ray.LoadTextureFromImage(.{
@@ -147,11 +197,13 @@ const Render = struct {
         // int swirl_center_loc = ray.GetShaderLocation(render.remap_colors_shader, "color_map");
         //ray.SetShaderValueTexture(render.remap_colors_shader, cri.gpu_texture);
         //ray.BeginShaderMode(render.remap_colors_shader, texture_loc, cri.gpu_texture);
+
+        // if we draw triangles, we can convert the four corners to positions and draw those triangles
         ray.DrawTextureEx(
             cri.gpu_texture,
-            .{.x = 0, .y = 0}, // position, for now
+            .{.x = offset[0], .y = offset[1]}, // position, for now
             0,
-            1.0, // scale, for now
+            scale, // scale, for now
             .{.r = 255, .g = 255, .b = 255, .a = 255},
         );
         //ray.EndShaderMode();
@@ -173,18 +225,28 @@ pub fn main() !void {
     var world = try World.create(alloc);
     defer world.destroy();
 
-    var render = try Render.create(alloc);
+    var render = try Render.create(alloc, world);
     defer render.destroy();
+
+    var prev_world_pos: ?Vec2i = null;
 
     while(!ray.WindowShouldClose()) {
         const mp = Vec2i{ray.GetMouseX(), ray.GetMouseY()};
-        const target_chunk = try world.getOrLoadChunk(.{0, 0});
-        if(Chunk.itmIndex(mp) != null) {
-            target_chunk.setPixel(mp, 255);
+        const world_pos = render.screenToWorldPos(mp);
+        if(ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
+            if(prev_world_pos == null) prev_world_pos = world_pos;
+            var lp = math.LinePlotter.init(prev_world_pos.?, world_pos);
+            while(lp.next()) |pos| {
+                try world.setPixel(pos, 255);
+            }
+            prev_world_pos = world_pos;
+        }else{
+            prev_world_pos = null;
         }
 
         ray.BeginDrawing();
-        try render.renderWorld(world);
+        try render.renderWorld();
+        ray.DrawFPS(10, 10);
         ray.EndDrawing();
     }
 }
