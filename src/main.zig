@@ -7,6 +7,7 @@ const math = @import("math.zig");
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
 const vi2f = math.vi2f;
+const vf2i = math.vf2i;
 
 const EntityID = enum(u32) {none, _};
 
@@ -234,18 +235,26 @@ pub fn main() !void {
 
     var prev_world_pos: ?Vec2i = null;
 
+    var mwheel_error: Vec2f32 = .{0, 0};
+    const mwheel_mul: Vec2f32 = .{10.0, 10.0};
+
     //ray.DisableCursor();
 
     while(!ray.WindowShouldClose()) {
-        if(ray.IsCursorHidden()) blk: {
-            if(!ray.IsWindowFocused() or ray.IsKeyPressed(ray.KEY_ESCAPE)) {
-                ray.EnableCursor();
-                break :blk;
-            }
-            const mouse_delta = ray.GetMouseDelta();
-            render.center_offset -= Vec2i{@intFromFloat(mouse_delta.x), @intFromFloat(mouse_delta.y)};
 
-            const mp = Vec2i{@divFloor(ray.GetScreenWidth(), 2), @divFloor(ray.GetScreenHeight(), 2)};
+        const mwheel_rayvec = ray.GetMouseWheelMoveV();
+        const mwheel_ray = Vec2f32{mwheel_rayvec.x, mwheel_rayvec.y} * mwheel_mul + mwheel_error;
+        mwheel_error = .{0, 0};
+        const mwheel_i32 = vf2i(@floor(mwheel_ray));
+        mwheel_error += mwheel_ray - vi2f(mwheel_i32);
+        if(ray.IsKeyDown(ray.KEY_LEFT_SHIFT) or ray.IsKeyDown(ray.KEY_RIGHT_SHIFT)) {
+            render.center_offset += Vec2i{mwheel_i32[0] + mwheel_i32[1], 0};
+        }else{
+            render.center_offset += mwheel_i32;
+        }
+
+        {
+            const mp = Vec2i{ray.GetMouseX(), ray.GetMouseY()};
             const world_pos = render.screenToWorldPos(mp);
             if(ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
                 if(prev_world_pos == null) prev_world_pos = world_pos;
@@ -256,10 +265,6 @@ pub fn main() !void {
                 prev_world_pos = world_pos;
             }else{
                 prev_world_pos = null;
-            }
-        }else{
-            if(ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
-                ray.DisableCursor();
             }
         }
 

@@ -5,6 +5,9 @@ pub const Vec2f32 = @Vector(2, f32);
 pub fn vi2f(vi: Vec2i) Vec2f32 {
     return .{@floatFromInt(vi[0]), @floatFromInt(vi[1])};
 }
+pub fn vf2i(vf: Vec2f32) Vec2i {
+    return .{@intFromFloat(vf[0]), @intFromFloat(vf[1])};
+}
 
 pub const LinePlotter = struct {
     x0: i32,
