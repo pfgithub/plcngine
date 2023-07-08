@@ -234,14 +234,12 @@ pub fn main() !void {
 
     var prev_world_pos: ?Vec2i = null;
 
-    ray.DisableCursor();
-    ray.HideCursor();
+    //ray.DisableCursor();
 
     while(!ray.WindowShouldClose()) {
         if(ray.IsCursorHidden()) blk: {
             if(!ray.IsWindowFocused() or ray.IsKeyPressed(ray.KEY_ESCAPE)) {
                 ray.EnableCursor();
-                ray.ShowCursor();
                 break :blk;
             }
             const mouse_delta = ray.GetMouseDelta();
@@ -262,7 +260,6 @@ pub fn main() !void {
         }else{
             if(ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
                 ray.DisableCursor();
-                ray.HideCursor();
             }
         }
 
