@@ -125,7 +125,9 @@ const Render = struct {
     //camera_center: Vec2f,
     alloc: std.mem.Allocator,
     remap_colors_shader: ray.Shader,
-    center_offset: Vec2i = .{0, 0},
+    center_offset: Vec2f32 = .{0, 0},
+    center_scale: f32 = 1.0,
+    window_size: Vec2f32 = .{0, 0},
 
     world: *World,
 
@@ -150,18 +152,28 @@ const Render = struct {
         render.alloc.destroy(render);
     }
 
-    fn screenToWorldPos(render: *Render, screen_pos: Vec2i) Vec2i {
-        return screen_pos - render.center_offset;
+    fn screenToWorldPos(render: *Render, screen_pos: Vec2f32) Vec2f32 {
+        const wso2 = render.halfScreen();
+        const scale = @splat(2, render.center_scale);
+        return (screen_pos - wso2) / scale + render.center_offset;
+    }
+    fn worldPosToScreenPos(render: *Render, world_pos: Vec2i) Vec2f32 {
+        const wso2 = render.halfScreen();
+        const scale = @splat(2, render.center_scale);
+        return (vi2f(world_pos) - render.center_offset) * scale + wso2;
+    }
+    fn halfScreen(render: *Render) Vec2f32 {
+        return render.window_size / @splat(2, @as(f32, 2.0));
     }
 
     pub fn renderWorld(render: *Render) !void {
         const world = render.world;
 
-        const screen_size = Vec2i{ray.GetScreenWidth(), ray.GetScreenHeight()};
-        const ul = render.screenToWorldPos(.{0, 0});
-        const ur = render.screenToWorldPos(.{screen_size[0], 0});
-        const bl = render.screenToWorldPos(.{0, screen_size[1]});
-        const br = render.screenToWorldPos(.{screen_size[0], screen_size[1]});
+        const screen_size = render.window_size;
+        const ul = vf2i(render.screenToWorldPos(.{0, 0}));
+        const ur = vf2i(render.screenToWorldPos(.{screen_size[0], 0}));
+        const bl = vf2i(render.screenToWorldPos(.{0, screen_size[1]}));
+        const br = vf2i(render.screenToWorldPos(.{screen_size[0], screen_size[1]}));
         const xy_min = @min(ul, ur, bl, br);
         const xy_max = @max(ul, ur, bl, br);
         const chunk_min = World.worldPosToChunkPos(xy_min);
@@ -173,8 +185,8 @@ const Render = struct {
                 const target_chunk = try world.getOrLoadChunk(chunk_pos);
                 render.renderChunk(
                     target_chunk,
-                    1.0,
-                    vi2f(chunk_pos * Vec2i{CHUNK_SIZE, CHUNK_SIZE} + render.center_offset),
+                    render.center_scale,
+                    render.worldPosToScreenPos( chunk_pos * Vec2i{CHUNK_SIZE, CHUNK_SIZE} ),
                 );
             }}
         }}
@@ -235,27 +247,52 @@ pub fn main() !void {
 
     var prev_world_pos: ?Vec2i = null;
 
-    var mwheel_error: Vec2f32 = .{0, 0};
-    const mwheel_mul: Vec2f32 = .{10.0, 10.0};
+    const mwheel_mul: Vec2f32 = .{20.0, 20.0};
 
     //ray.DisableCursor();
 
     while(!ray.WindowShouldClose()) {
+        render.window_size = vi2f(.{ray.GetScreenWidth(), ray.GetScreenHeight()});
+        // std.log.info("{d}, {d}", .{render.center_offset, render.center_scale});
+
+        const mp = if(ray.IsCursorHidden()) render.halfScreen() else vi2f(.{ray.GetMouseX(), ray.GetMouseY()});
+        if(!ray.IsCursorHidden()) {
+            if(ray.IsKeyPressed(ray.KEY_A)) {
+                ray.DisableCursor();
+            }
+        }else{
+            if(ray.IsKeyPressed(ray.KEY_ESCAPE)) {
+                ray.EnableCursor();
+            }
+        }
 
         const mwheel_rayvec = ray.GetMouseWheelMoveV();
-        const mwheel_ray = Vec2f32{mwheel_rayvec.x, mwheel_rayvec.y} * mwheel_mul + mwheel_error;
-        mwheel_error = .{0, 0};
-        const mwheel_i32 = vf2i(@floor(mwheel_ray));
-        mwheel_error += mwheel_ray - vi2f(mwheel_i32);
-        if(ray.IsKeyDown(ray.KEY_LEFT_SHIFT) or ray.IsKeyDown(ray.KEY_RIGHT_SHIFT)) {
-            render.center_offset += Vec2i{mwheel_i32[0] + mwheel_i32[1], 0};
+        const mwheel_ray = Vec2f32{mwheel_rayvec.x, mwheel_rayvec.y} * mwheel_mul;
+        if(ray.IsKeyDown(ray.KEY_LEFT_CONTROL) or ray.IsKeyDown(ray.KEY_RIGHT_CONTROL) or ray.IsKeyDown(ray.KEY_LEFT_ALT) or ray.IsKeyDown(ray.KEY_RIGHT_ALT)) {
+            const mpos_before = render.screenToWorldPos(mp);
+
+            const wheel: f32 = (mwheel_ray[0] + mwheel_ray[1]) / 120.0;
+            const zoom: f32 = std.math.pow(f32, 1 + @fabs(wheel) / 2, @as(f32, if(wheel > 0) -1 else 1));
+            render.center_scale *= zoom;
+            if(render.center_scale < 1.0) render.center_scale = 1.0;
+            if(render.center_scale > 2048.0) render.center_scale = 2048.0;
+
+            const mpos_after = render.screenToWorldPos(mp);
+            render.center_offset -= mpos_after - mpos_before;
+        }else if(ray.IsKeyDown(ray.KEY_LEFT_SHIFT) or ray.IsKeyDown(ray.KEY_RIGHT_SHIFT)) {
+            render.center_offset -= Vec2f32{mwheel_ray[0] + mwheel_ray[1], 0} / @splat(2, render.center_scale);
         }else{
-            render.center_offset += mwheel_i32;
+            render.center_offset -= mwheel_ray / @splat(2, render.center_scale);
+        }
+        if(ray.IsCursorHidden()) {
+            const md = ray.GetMouseDelta();
+            const mmove_vec = Vec2f32{md.x, md.y};
+
+            render.center_offset += mmove_vec / @splat(2, render.center_scale);
         }
 
         {
-            const mp = Vec2i{ray.GetMouseX(), ray.GetMouseY()};
-            const world_pos = render.screenToWorldPos(mp);
+            const world_pos = vf2i(render.screenToWorldPos(mp));
             if(ray.IsMouseButtonDown(ray.MOUSE_BUTTON_LEFT)) {
                 if(prev_world_pos == null) prev_world_pos = world_pos;
                 var lp = math.LinePlotter.init(prev_world_pos.?, world_pos);
