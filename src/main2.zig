@@ -40,6 +40,13 @@ pub fn init(app: *App) !void {
     const allocator = gpa.allocator();
     try app.core.init(allocator, .{});
 
+    // fn (ctx: @TypeOf(context), typ: ErrorType, message: [*:0]const u8) callconv(.Inline) void
+    app.core.device().setUncapturedErrorCallback(app, struct{fn a(ctx: *App, typ: gpu.ErrorType, message: [*:0]const u8) callconv(.Inline) void {
+        _ = ctx;
+        std.log.scoped(.wgpu).err("{s} / {s}", .{@tagName(typ), message});
+        std.process.exit(1);
+    }}.a);
+
     app.world = try World.create(allocator);
     errdefer app.world.destroy();
 
@@ -164,6 +171,8 @@ pub fn init(app: *App) !void {
     app.queue = queue;
     app.depth_texture = null;
     app.depth_texture_view = null;
+
+    app.core.device().tick();
 }
 
 pub fn deinit(app: *App) void {
@@ -296,6 +305,8 @@ pub fn update(app: *App) !bool {
     // if (app.window_title_timer.read() >= 1.0) {
     //     app.window_title_timer.reset();
     // }
+
+    app.core.device().tick();
 
     return false;
 }
