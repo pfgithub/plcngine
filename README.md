@@ -1,5 +1,9 @@
 > early development
 
+```
+git submodule update --init --recursive
+```
+
 plcngine:
 
 goals:
