@@ -27,7 +27,6 @@ fps_timer: mach.Timer,
 window_title_timer: mach.Timer,
 pipeline: *gpu.RenderPipeline,
 queue: *gpu.Queue,
-vertex_buffer: *gpu.Buffer,
 uniform_buffer: *gpu.Buffer,
 bind_group: *gpu.BindGroup,
 depth_texture: ?*gpu.Texture,
@@ -109,12 +108,6 @@ pub fn init(app: *App) !void {
     };
     const pipeline = app.core.device().createRenderPipeline(&pipeline_descriptor);
 
-    app.vertex_buffer = app.core.device().createBuffer(&.{
-        .usage = .{ .copy_dst = true, .vertex = true },
-        .size = @sizeOf(Vertex) * vertices.len,
-        .mapped_at_creation = false,
-    });
-
     // Create a sampler with linear filtering for smooth interpolation.
     const sampler = app.core.device().createSampler(&.{
         .mag_filter = .linear,
@@ -179,7 +172,6 @@ pub fn deinit(app: *App) void {
     defer _ = gpa.deinit();
     defer app.core.deinit();
 
-    app.vertex_buffer.release();
     app.uniform_buffer.release();
     app.bind_group.release();
     if(app.depth_texture) |dt| dt.release();
@@ -255,11 +247,14 @@ pub fn update(app: *App) !bool {
         },
     });
 
-    {
-        // var vertex_mapped = app.vertex_buffer.getMappedRange(Vertex, 0, vertices.len);
-        // std.mem.copy(Vertex, vertex_mapped.?, vertices[0..]);
-        encoder.writeBuffer(app.vertex_buffer, 0, vertices[0..]);
-    }
+    const vertex_buffer = app.core.device().createBuffer(&.{
+        .usage = .{ .copy_dst = true, .vertex = true },
+        .size = @sizeOf(Vertex) * vertices.len,
+        .mapped_at_creation = false,
+    });
+    defer vertex_buffer.release();
+    encoder.writeBuffer(vertex_buffer, 0, vertices[0..]);
+
     {
         const time = app.timer.read();
         const model = zm.mul(zm.rotationX(time * (std.math.pi / 2.0)), zm.rotationZ(time * (std.math.pi / 2.0)));
@@ -283,7 +278,7 @@ pub fn update(app: *App) !bool {
 
     const pass = encoder.beginRenderPass(&render_pass_info);
     pass.setPipeline(app.pipeline);
-    pass.setVertexBuffer(0, app.vertex_buffer, 0, @sizeOf(Vertex) * vertices.len);
+    pass.setVertexBuffer(0, vertex_buffer, 0, @sizeOf(Vertex) * vertices.len);
     pass.setBindGroup(0, app.bind_group, &.{});
     pass.draw(vertices.len, 1, 0, 0);
     pass.end();
