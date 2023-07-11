@@ -8,10 +8,23 @@ const mach = @import("mach");
 const gpu = mach.gpu;
 const zm = @import("zmath");
 const zigimg = @import("zigimg");
-const Vertex = @import("cube_mesh.zig").Vertex;
-const vertices = @import("cube_mesh.zig").vertices;
 const assets = struct {
     const gotta_go_fast_image = @embedFile("gotta-go-fast.png");
+};
+
+const Vertex = extern struct {
+    pos: @Vector(4, f32),
+    uv: @Vector(2, f32),
+};
+
+const vertices = [_]Vertex{
+    .{ .pos = .{ -0.5, -0.5, 0, 1 }, .uv = .{ 0, 1 } },
+    .{ .pos = .{ 0.5, -0.5, 0, 1 }, .uv = .{ 1, 1 } },
+    .{ .pos = .{ -0.5, 0.5, 0, 1 }, .uv = .{ 0, 0 } },
+
+    .{ .pos = .{ -0.5, 0.5, 0, 1 }, .uv = .{ 0, 0 } },
+    .{ .pos = .{ 0.5, -0.5, 0, 1 }, .uv = .{ 1, 1 } },
+    .{ .pos = .{ 0.5, 0.5, 0, 1 }, .uv = .{ 1, 0 } },
 };
 
 pub const App = @This();
