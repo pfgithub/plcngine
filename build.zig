@@ -1,5 +1,6 @@
 const std = @import("std");
 const mach = @import("libs/mach/build.zig");
+const zmath = @import("libs/zmath/build.zig");
 
 pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
@@ -25,7 +26,18 @@ pub fn build(b: *std.Build) !void {
         .name = "plcngine",
         .src = "src/main2.zig",
         .target = target,
-        .deps = &[_]std.build.ModuleDependency{},
+        .deps = &[_]std.build.ModuleDependency{
+            .{
+                .name = "zigimg",
+                .module = b.createModule(.{.source_file = .{.path = "libs/zigimg/zigimg.zig"}}),
+            },
+            .{
+                .name = "zmath",
+                .module = zmath.package(b, target, optimize, .{
+                    .options = .{ .enable_cross_platform_determinism = true },
+                }).zmath,
+            },
+        },
         .optimize = optimize,
     });
     try app.link(options);
