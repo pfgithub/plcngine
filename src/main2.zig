@@ -46,7 +46,7 @@ depth_texture: ?*gpu.Texture,
 depth_texture_view: ?*gpu.TextureView,
 
 world: *World,
-// render: *Render,
+render: *Render,
 
 pub fn init(app: *App) !void {
     const allocator = gpa.allocator();
@@ -61,6 +61,8 @@ pub fn init(app: *App) !void {
 
     app.world = try World.create(allocator);
     errdefer app.world.destroy();
+    app.render = try Render.create(allocator, app.world, app);
+    errdefer app.render.destroy();
 
     const shader_module = app.core.device().createShaderModuleWGSL("shader.wgsl", @embedFile("shader.wgsl"));
     defer shader_module.release();
@@ -192,6 +194,7 @@ pub fn deinit(app: *App) void {
     app.bind_group.release();
     if(app.depth_texture) |dt| dt.release();
     if(app.depth_texture_view) |dtv| dtv.release();
+    app.render.destroy();
     app.world.destroy();
 }
 

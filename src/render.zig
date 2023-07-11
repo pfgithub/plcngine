@@ -120,6 +120,9 @@ pub const Render = struct {
             render.app.queue.writeTexture(&.{ .texture = cri.gpu_texture }, &data_layout, &img_size, &chunk.texture);
         }
 
+        // each chunk will be drawn in a seperate render pass for now
+        // eventually we'll put all the chunks into one texture and render them all in one pass
+
         // draw two triangles with uv coords of target texture
         // int texture_loc = ray.GetShaderLocation(render.remap_colors_shader, "texture0");
         // int swirl_center_loc = ray.GetShaderLocation(render.remap_colors_shader, "color_map");
