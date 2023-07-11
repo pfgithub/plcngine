@@ -1,7 +1,7 @@
-// const world_import = @import("world.zig");
-// const render_import = @import("render.zig");
-// const World = world_import.World;
-// const Render = render_import.Render;
+const world_import = @import("world.zig");
+const render_import = @import("render.zig");
+const World = world_import.World;
+const Render = render_import.Render;
 
 const std = @import("std");
 const mach = @import("mach");
@@ -33,12 +33,15 @@ bind_group: *gpu.BindGroup,
 depth_texture: *gpu.Texture,
 depth_texture_view: *gpu.TextureView,
 
-// world: *World,
+world: *World,
 // render: *Render,
 
 pub fn init(app: *App) !void {
     const allocator = gpa.allocator();
     try app.core.init(allocator, .{});
+
+    app.world = try World.create(allocator);
+    errdefer app.world.destroy();
 
     const shader_module = app.core.device().createShaderModuleWGSL("shader.wgsl", @embedFile("shader.wgsl"));
 
@@ -198,6 +201,7 @@ pub fn deinit(app: *App) void {
     app.bind_group.release();
     app.depth_texture.release();
     app.depth_texture_view.release();
+    app.world.destroy();
 }
 
 pub fn update(app: *App) !bool {

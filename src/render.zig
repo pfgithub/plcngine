@@ -21,10 +21,10 @@ pub const ChunkRenderInfo = struct {
     // and then all the chunks can be drawn in one draw call
     // is that good? idk
 
-    gpu_texture: gpu.Texture = undefined, // last_updated 0 indicates that this is undefined and should not be used
+    gpu_texture: *gpu.Texture = undefined, // last_updated 0 indicates that this is undefined and should not be used
     last_updated: usize = 0,
 
-    fn deinit(cri: ChunkRenderInfo) void {
+    pub fn deinit(cri: ChunkRenderInfo) void {
         if(cri.last_updated != 0) {
             cri.gpu_texture.destroy();
         }
@@ -44,7 +44,7 @@ pub const Render = struct {
     world: *World,
     app: *App,
 
-    fn create(alloc: std.mem.Allocator, world: *World, app: *App) !*Render {
+    pub fn create(alloc: std.mem.Allocator, world: *World, app: *App) !*Render {
         const render = try alloc.create(Render);
         render.* = .{
             .alloc = alloc,
@@ -53,21 +53,21 @@ pub const Render = struct {
         };
         return render;
     }
-    fn destroy(render: *Render) void {
+    pub fn destroy(render: *Render) void {
         render.alloc.destroy(render);
     }
 
-    fn screenToWorldPos(render: *Render, screen_pos: Vec2f32) Vec2f32 {
+    pub fn screenToWorldPos(render: *Render, screen_pos: Vec2f32) Vec2f32 {
         const wso2 = render.halfScreen();
         const scale = @splat(2, render.center_scale);
         return (screen_pos - wso2) / scale + render.center_offset;
     }
-    fn worldPosToScreenPos(render: *Render, world_pos: Vec2i) Vec2f32 {
+    pub fn worldPosToScreenPos(render: *Render, world_pos: Vec2i) Vec2f32 {
         const wso2 = render.halfScreen();
         const scale = @splat(2, render.center_scale);
         return (vi2f(world_pos) - render.center_offset) * scale + wso2;
     }
-    fn halfScreen(render: *Render) Vec2f32 {
+    pub fn halfScreen(render: *Render) Vec2f32 {
         return render.window_size / @splat(2, @as(f32, 2.0));
     }
 
@@ -97,7 +97,7 @@ pub const Render = struct {
         }}
     }
 
-    fn renderChunk(render: *Render, chunk: *Chunk, scale: f32, offset: Vec2f32) void {
+    pub fn renderChunk(render: *Render, chunk: *Chunk, scale: f32, offset: Vec2f32) void {
         const cri = &chunk.chunk_render_info;
         const img_size = gpu.Extent3D{ .width = CHUNK_SIZE, .height = CHUNK_SIZE };
         if(cri.last_updated == 0) {
@@ -120,7 +120,6 @@ pub const Render = struct {
             render.app.queue.writeTexture(&.{ .texture = cri.gpu_texture }, &data_layout, &img_size, &chunk.texture);
         }
 
-        _ = render;
         // draw two triangles with uv coords of target texture
         // int texture_loc = ray.GetShaderLocation(render.remap_colors_shader, "texture0");
         // int swirl_center_loc = ray.GetShaderLocation(render.remap_colors_shader, "color_map");
@@ -138,6 +137,8 @@ pub const Render = struct {
         //     scale, // scale, for now
         //     .{.r = 255, .g = 255, .b = 255, .a = 255},
         // );
+        _ = scale;
+        _ = offset;
 
         //ray.EndShaderMode();
     }
