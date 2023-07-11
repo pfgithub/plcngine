@@ -30,8 +30,8 @@ queue: *gpu.Queue,
 vertex_buffer: *gpu.Buffer,
 uniform_buffer: *gpu.Buffer,
 bind_group: *gpu.BindGroup,
-depth_texture: *gpu.Texture,
-depth_texture_view: *gpu.TextureView,
+depth_texture: ?*gpu.Texture,
+depth_texture_view: ?*gpu.TextureView,
 
 world: *World,
 // render: *Render,
@@ -44,6 +44,7 @@ pub fn init(app: *App) !void {
     errdefer app.world.destroy();
 
     const shader_module = app.core.device().createShaderModuleWGSL("shader.wgsl", @embedFile("shader.wgsl"));
+    defer shader_module.release();
 
     const vertex_attributes = [_]gpu.VertexAttribute{
         .{ .format = .float32x4, .offset = @offsetOf(Vertex, "pos"), .shader_location = 0 },
@@ -101,14 +102,11 @@ pub fn init(app: *App) !void {
     };
     const pipeline = app.core.device().createRenderPipeline(&pipeline_descriptor);
 
-    const vertex_buffer = app.core.device().createBuffer(&.{
-        .usage = .{ .vertex = true },
+    app.vertex_buffer = app.core.device().createBuffer(&.{
+        .usage = .{ .copy_dst = true, .vertex = true },
         .size = @sizeOf(Vertex) * vertices.len,
-        .mapped_at_creation = true,
+        .mapped_at_creation = false,
     });
-    var vertex_mapped = vertex_buffer.getMappedRange(Vertex, 0, vertices.len);
-    std.mem.copy(Vertex, vertex_mapped.?, vertices[0..]);
-    vertex_buffer.unmap();
 
     // Create a sampler with linear filtering for smooth interpolation.
     const sampler = app.core.device().createSampler(&.{
@@ -142,54 +140,30 @@ pub fn init(app: *App) !void {
         else => @panic("unsupported image color format"),
     }
 
-    const uniform_buffer = app.core.device().createBuffer(&.{
+    app.uniform_buffer = app.core.device().createBuffer(&.{
         .usage = .{ .copy_dst = true, .uniform = true },
         .size = @sizeOf(UniformBufferObject),
         .mapped_at_creation = false,
     });
 
-    const bind_group = app.core.device().createBindGroup(
+    app.bind_group = app.core.device().createBindGroup(
         &gpu.BindGroup.Descriptor.init(.{
             .layout = pipeline.getBindGroupLayout(0),
             .entries = &.{
-                gpu.BindGroup.Entry.buffer(0, uniform_buffer, 0, @sizeOf(UniformBufferObject)),
+                gpu.BindGroup.Entry.buffer(0, app.uniform_buffer, 0, @sizeOf(UniformBufferObject)),
                 gpu.BindGroup.Entry.sampler(1, sampler),
                 gpu.BindGroup.Entry.textureView(2, cube_texture.createView(&gpu.TextureView.Descriptor{})),
             },
         }),
     );
 
-    const depth_texture = app.core.device().createTexture(&gpu.Texture.Descriptor{
-        .size = gpu.Extent3D{
-            .width = app.core.descriptor().width,
-            .height = app.core.descriptor().height,
-        },
-        .format = .depth24_plus,
-        .usage = .{
-            .render_attachment = true,
-            .texture_binding = true,
-        },
-    });
-
-    const depth_texture_view = depth_texture.createView(&gpu.TextureView.Descriptor{
-        .format = .depth24_plus,
-        .dimension = .dimension_2d,
-        .array_layer_count = 1,
-        .mip_level_count = 1,
-    });
-
     app.timer = try mach.Timer.start();
     app.fps_timer = try mach.Timer.start();
     app.window_title_timer = try mach.Timer.start();
     app.pipeline = pipeline;
     app.queue = queue;
-    app.vertex_buffer = vertex_buffer;
-    app.uniform_buffer = uniform_buffer;
-    app.bind_group = bind_group;
-    app.depth_texture = depth_texture;
-    app.depth_texture_view = depth_texture_view;
-
-    shader_module.release();
+    app.depth_texture = null;
+    app.depth_texture_view = null;
 }
 
 pub fn deinit(app: *App) void {
@@ -199,8 +173,8 @@ pub fn deinit(app: *App) void {
     app.vertex_buffer.release();
     app.uniform_buffer.release();
     app.bind_group.release();
-    app.depth_texture.release();
-    app.depth_texture_view.release();
+    if(app.depth_texture) |dt| dt.release();
+    if(app.depth_texture_view) |dtv| dtv.release();
     app.world.destroy();
 }
 
@@ -209,42 +183,48 @@ pub fn update(app: *App) !bool {
     while (iter.next()) |event| {
         switch (event) {
             .key_press => |ev| {
-                switch (ev.key) {
-                    .space => return true,
-                    .one => app.core.setVSync(.none),
-                    .two => app.core.setVSync(.double),
-                    .three => app.core.setVSync(.triple),
-                    else => {},
-                }
+                _ = ev;
                 std.debug.print("vsync mode changed to {s}\n", .{@tagName(app.core.vsync())});
+                // switch (ev.key) {
+                //     .space => return true,
+                //     .one => app.core.setVSync(.none),
+                //     .two => app.core.setVSync(.double),
+                //     .three => app.core.setVSync(.triple),
+                //     else => {},
+                // }
+                // std.debug.print("vsync mode changed to {s}\n", .{@tagName(app.core.vsync())});
             },
-            .framebuffer_resize => |ev| {
+            .framebuffer_resize => {
                 // If window is resized, recreate depth buffer otherwise we cannot use it.
-                app.depth_texture.release();
+                if(app.depth_texture) |dt| dt.release();
+                app.depth_texture = null;
 
-                app.depth_texture = app.core.device().createTexture(&gpu.Texture.Descriptor{
-                    .size = gpu.Extent3D{
-                        .width = ev.width,
-                        .height = ev.height,
-                    },
-                    .format = .depth24_plus,
-                    .usage = .{
-                        .render_attachment = true,
-                        .texture_binding = true,
-                    },
-                });
-
-                app.depth_texture_view.release();
-                app.depth_texture_view = app.depth_texture.createView(&gpu.TextureView.Descriptor{
-                    .format = .depth24_plus,
-                    .dimension = .dimension_2d,
-                    .array_layer_count = 1,
-                    .mip_level_count = 1,
-                });
+                if(app.depth_texture_view) |dtv| dtv.release();
+                app.depth_texture_view = null;
             },
             .close => return true,
             else => {},
         }
+    }
+
+    if(app.depth_texture == null and app.depth_texture_view == null) {
+        app.depth_texture = app.core.device().createTexture(&gpu.Texture.Descriptor{
+            .size = gpu.Extent3D{
+                .width = app.core.descriptor().width,
+                .height = app.core.descriptor().height,
+            },
+            .format = .depth24_plus,
+            .usage = .{
+                .render_attachment = true,
+                .texture_binding = true,
+            },
+        });
+        app.depth_texture_view = app.depth_texture.?.createView(&gpu.TextureView.Descriptor{
+            .format = .depth24_plus,
+            .dimension = .dimension_2d,
+            .array_layer_count = 1,
+            .mip_level_count = 1,
+        });
     }
 
     const back_buffer_view = app.core.swapChain().getCurrentTextureView().?;
@@ -259,13 +239,18 @@ pub fn update(app: *App) !bool {
     const render_pass_info = gpu.RenderPassDescriptor.init(.{
         .color_attachments = &.{color_attachment},
         .depth_stencil_attachment = &.{
-            .view = app.depth_texture_view,
+            .view = app.depth_texture_view.?,
             .depth_clear_value = 1.0,
             .depth_load_op = .clear,
             .depth_store_op = .store,
         },
     });
 
+    {
+        // var vertex_mapped = app.vertex_buffer.getMappedRange(Vertex, 0, vertices.len);
+        // std.mem.copy(Vertex, vertex_mapped.?, vertices[0..]);
+        encoder.writeBuffer(app.vertex_buffer, 0, vertices[0..]);
+    }
     {
         const time = app.timer.read();
         const model = zm.mul(zm.rotationX(time * (std.math.pi / 2.0)), zm.rotationZ(time * (std.math.pi / 2.0)));
@@ -303,13 +288,14 @@ pub fn update(app: *App) !bool {
     app.core.swapChain().present();
     back_buffer_view.release();
 
-    const delta_time = app.fps_timer.lap();
-    if (app.window_title_timer.read() >= 1.0) {
-        app.window_title_timer.reset();
-        var buf: [32]u8 = undefined;
-        const title = try std.fmt.bufPrintZ(&buf, "Textured Cube [ FPS: {d} ]", .{@floor(1 / delta_time)});
-        app.core.setTitle(title);
-    }
+    // const delta_time = app.fps_timer.read();
+    // app.fps_timer.reset();
+    // var buf: [32]u8 = undefined;
+    // const title = try std.fmt.bufPrintZ(&buf, "Textured Cube [ FPS: {d} ]", .{@floor(1 / delta_time)});
+    // app.core.setTitle(title);
+    // if (app.window_title_timer.read() >= 1.0) {
+    //     app.window_title_timer.reset();
+    // }
 
     return false;
 }
