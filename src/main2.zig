@@ -40,10 +40,9 @@ fps_timer: mach.Timer,
 window_title_timer: mach.Timer,
 pipeline: *gpu.RenderPipeline,
 queue: *gpu.Queue,
-uniform_buffer: *gpu.Buffer,
-bind_group: *gpu.BindGroup,
 depth_texture: ?*gpu.Texture,
 depth_texture_view: ?*gpu.TextureView,
+cube_texture_view: *gpu.TextureView,
 
 world: *World,
 render: *Render,
@@ -126,11 +125,6 @@ pub fn init(app: *App) !void {
     };
     const pipeline = app.core.device().createRenderPipeline(&pipeline_descriptor);
 
-    // Create a sampler with linear filtering for smooth interpolation.
-    const sampler = app.core.device().createSampler(&.{
-        .mag_filter = .linear,
-        .min_filter = .linear,
-    });
     const queue = app.core.device().getQueue();
     var img = try zigimg.Image.fromMemory(allocator, assets.gotta_go_fast_image);
     defer img.deinit();
@@ -157,23 +151,7 @@ pub fn init(app: *App) !void {
         },
         else => @panic("unsupported image color format"),
     }
-
-    app.uniform_buffer = app.core.device().createBuffer(&.{
-        .usage = .{ .copy_dst = true, .uniform = true },
-        .size = @sizeOf(UniformBufferObject),
-        .mapped_at_creation = false,
-    });
-
-    app.bind_group = app.core.device().createBindGroup(
-        &gpu.BindGroup.Descriptor.init(.{
-            .layout = pipeline.getBindGroupLayout(0),
-            .entries = &.{
-                gpu.BindGroup.Entry.buffer(0, app.uniform_buffer, 0, @sizeOf(UniformBufferObject)),
-                gpu.BindGroup.Entry.sampler(1, sampler),
-                gpu.BindGroup.Entry.textureView(2, cube_texture.createView(&gpu.TextureView.Descriptor{})),
-            },
-        }),
-    );
+    app.cube_texture_view = cube_texture.createView(&gpu.TextureView.Descriptor{});
 
     app.timer = try mach.Timer.start();
     app.fps_timer = try mach.Timer.start();
@@ -190,8 +168,6 @@ pub fn deinit(app: *App) void {
     defer _ = gpa.deinit();
     defer app.core.deinit();
 
-    app.uniform_buffer.release();
-    app.bind_group.release();
     if(app.depth_texture) |dt| dt.release();
     if(app.depth_texture_view) |dtv| dtv.release();
     app.render.destroy();
@@ -274,16 +250,43 @@ pub fn update(app: *App) !bool {
     defer vertex_buffer.release();
     encoder.writeBuffer(vertex_buffer, 0, vertices[0..]);
 
+
+    const uniform_buffer = app.core.device().createBuffer(&.{
+        .usage = .{ .copy_dst = true, .uniform = true },
+        .size = @sizeOf(UniformBufferObject),
+        .mapped_at_creation = false,
+    });
+    defer uniform_buffer.release();
+
+    // Create a sampler with linear filtering for smooth interpolation.
+    const sampler = app.core.device().createSampler(&.{
+        .mag_filter = .nearest,
+        .min_filter = .nearest,
+    });
+    defer sampler.release();
+
+    const bind_group = app.core.device().createBindGroup(
+        &gpu.BindGroup.Descriptor.init(.{
+            .layout = app.pipeline.getBindGroupLayout(0),
+            .entries = &.{
+                gpu.BindGroup.Entry.buffer(0, uniform_buffer, 0, @sizeOf(UniformBufferObject)),
+                gpu.BindGroup.Entry.sampler(1, sampler),
+                gpu.BindGroup.Entry.textureView(2, app.cube_texture_view),
+            },
+        }),
+    );
+    defer bind_group.release();
+
     const ubo = UniformBufferObject{
         // .mat = zm.transpose(mvp),
         .color = 0xFF0000FF,
     };
-    encoder.writeBuffer(app.uniform_buffer, 0, &[_]UniformBufferObject{ubo});
+    encoder.writeBuffer(uniform_buffer, 0, &[_]UniformBufferObject{ubo});
 
     const pass = encoder.beginRenderPass(&render_pass_info);
     pass.setPipeline(app.pipeline);
     pass.setVertexBuffer(0, vertex_buffer, 0, @sizeOf(Vertex) * vertices.len);
-    pass.setBindGroup(0, app.bind_group, &.{});
+    pass.setBindGroup(0, bind_group, &.{});
     pass.draw(vertices.len, 1, 0, 0);
     pass.end();
     pass.release();
