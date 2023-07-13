@@ -8,8 +8,11 @@ fn vertex_main(
     @location(0) position : vec4<f32>,
     @location(1) uv : vec2<f32>,
 ) -> VertexOutput {
-    var output : VertexOutput;
-    output.Position = vec4(position.xy / uniforms.screen_size * 2.0 - 1.0, position.zw);
+    var output: VertexOutput;
+    // (0, 0) => (-1, 1)
+    // (100, 100) => (1.0, -1.0)
+    var xy: vec2<f32> = position.xy / uniforms.screen_size * 2.0 - 1.0;
+    output.Position = vec4(xy.x, 0.0 - xy.y, position.zw);
     output.fragUV = uv;
     return output;
 }

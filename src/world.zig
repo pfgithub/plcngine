@@ -10,7 +10,7 @@ const vf2i = math.vf2i;
 
 pub const EntityID = enum(u32) {none, _};
 
-pub const CHUNK_SIZE = 2048; // 2048
+pub const CHUNK_SIZE = 256; // 2048
 pub const Chunk = struct {
     chunk_pos: Vec2i,
     texture: [CHUNK_SIZE * CHUNK_SIZE]u8 = [_]u8{0} ** (CHUNK_SIZE * CHUNK_SIZE), // 8bpp image data, shader to remap colors based on entity

@@ -2,9 +2,16 @@ const world_import = @import("world.zig");
 const render_import = @import("render.zig");
 const World = world_import.World;
 const Render = render_import.Render;
+const math = @import("math.zig");
+
+const Vec2i = math.Vec2i;
+const Vec2f32 = math.Vec2f32;
+const vi2f = math.vi2f;
+const vf2i = math.vf2i;
 
 const std = @import("std");
 const mach = @import("mach");
+const Core = mach.Core;
 const gpu = mach.gpu;
 const zm = @import("zmath");
 const zigimg = @import("zigimg");
@@ -37,6 +44,8 @@ cube_texture_view: *gpu.TextureView,
 
 world: *World,
 render: *Render,
+ih: InputHelper,
+controller: Controller,
 
 pub fn init(app: *App) !void {
     const allocator = gpa.allocator();
@@ -151,6 +160,8 @@ pub fn init(app: *App) !void {
     app.queue = queue;
     app.depth_texture = null;
     app.depth_texture_view = null;
+    app.ih = .{};
+    app.controller = .{};
 
     app.core.device().tick();
 }
@@ -165,22 +176,102 @@ pub fn deinit(app: *App) void {
     app.world.destroy();
 }
 
+fn EnumBitSet(comptime Enum: type) type {
+    return struct {
+        const Self = @This();
+        const Backing = std.StaticBitSet(std.meta.fields(Enum).len);
+        backing: Backing,
+        pub fn initEmpty() Self {
+            return .{
+                .backing = Backing.initEmpty(),
+            };
+        }
+        pub fn get(self: *const Self, v: Enum) bool {
+            return self.backing.isSet(@intFromEnum(v));
+        }
+        pub fn set(self: *Self, v: Enum, val: bool) void {
+            return self.backing.setValue(@intFromEnum(v), val);
+        }
+    };
+}
+const InputHelper = struct {
+    keys_held: EnumBitSet(Core.Key) = EnumBitSet(Core.Key).initEmpty(),
+    mouse_held: EnumBitSet(Core.MouseButton) = EnumBitSet(Core.MouseButton).initEmpty(),
+    mouse_pos: ?Vec2f32 = null,
+
+    frame: struct {
+        key_press: EnumBitSet(Core.Key) = EnumBitSet(Core.Key).initEmpty(),
+        key_repeat: EnumBitSet(Core.Key) = EnumBitSet(Core.Key).initEmpty(),
+        key_release: EnumBitSet(Core.Key) = EnumBitSet(Core.Key).initEmpty(),
+
+        mouse_press: EnumBitSet(Core.MouseButton) = EnumBitSet(Core.MouseButton).initEmpty(),
+        mouse_release: EnumBitSet(Core.MouseButton) = EnumBitSet(Core.MouseButton).initEmpty(),
+        mouse_scroll: Vec2f32 = .{0, 0},
+    } = .{},
+
+    fn startFrame(ih: *InputHelper) void {
+        ih.frame = .{};
+    }
+    fn update(ih: *InputHelper, event: Core.Event) !void {
+        switch(event) {
+            .key_press => |ev| {
+                ih.keys_held.set(ev.key, true);
+                ih.frame.key_press.set(ev.key, true);
+            },
+            .key_repeat => |ev| {
+                ih.frame.key_repeat.set(ev.key, true);
+            },
+            .key_release => |ev| {
+                ih.keys_held.set(ev.key, false);
+                ih.frame.key_release.set(ev.key, true);
+            },
+            .mouse_press => |ev| {
+                ih.mouse_held.set(ev.button, true);
+                ih.frame.mouse_press.set(ev.button, true);
+                ih.mouse_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
+            },
+            .mouse_release => |ev| {
+                ih.mouse_held.set(ev.button, false);
+                ih.frame.mouse_release.set(ev.button, true);
+                ih.mouse_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
+            },
+            .mouse_motion => |ev| {
+                ih.mouse_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
+            },
+            .mouse_scroll => |ev| {
+                ih.frame.mouse_scroll = Vec2f32{ev.xoffset, ev.yoffset};
+            },
+            else => {},
+        }
+    }
+};
+const Controller = struct {
+    prev_world_pos: ?Vec2i = null,
+    fn update(controller: *Controller, app: *App) !void {
+        const render = app.render;
+        const world = app.world;
+        const ih = app.ih;
+
+        const world_pos = vf2i(render.screenToWorldPos(app.ih.mouse_pos orelse Vec2f32{-1, -1}));
+        if(ih.mouse_held.get(.left)) {
+            if(controller.prev_world_pos == null) controller.prev_world_pos = world_pos;
+            var lp = math.LinePlotter.init(controller.prev_world_pos.?, world_pos);
+            while(lp.next()) |pos| {
+                try world.setPixel(pos, 255);
+            }
+            controller.prev_world_pos = world_pos;
+        }else{
+            controller.prev_world_pos = null;
+        }
+    }
+};
+
 pub fn update(app: *App) !bool {
+    app.ih.startFrame();
     var iter = app.core.pollEvents();
     while (iter.next()) |event| {
+        try app.ih.update(event);
         switch (event) {
-            .key_press => |ev| {
-                _ = ev;
-                std.debug.print("vsync mode changed to {s}\n", .{@tagName(app.core.vsync())});
-                // switch (ev.key) {
-                //     .space => return true,
-                //     .one => app.core.setVSync(.none),
-                //     .two => app.core.setVSync(.double),
-                //     .three => app.core.setVSync(.triple),
-                //     else => {},
-                // }
-                // std.debug.print("vsync mode changed to {s}\n", .{@tagName(app.core.vsync())});
-            },
             .framebuffer_resize => {
                 // If window is resized, recreate depth buffer otherwise we cannot use it.
                 if(app.depth_texture) |dt| dt.release();
@@ -213,10 +304,6 @@ pub fn update(app: *App) !bool {
             .mip_level_count = 1,
         });
     }
-    app.render.window_size = .{
-        @floatFromInt(app.core.descriptor().width),
-        @floatFromInt(app.core.descriptor().height),
-    };
 
     const back_buffer_view = app.core.swapChain().getCurrentTextureView().?;
     const color_attachment = gpu.RenderPassColorAttachment{
@@ -237,11 +324,24 @@ pub fn update(app: *App) !bool {
         },
     });
 
-    try app.render.prepareWorld(encoder); //pass);
+    // switch (ev.key) {
+    //     .space => return true,
+    //     .one => app.core.setVSync(.none),
+    //     .two => app.core.setVSync(.double),
+    //     .three => app.core.setVSync(.triple),
+    //     else => {},
+    // }
+
+    app.render.window_size = .{
+        @floatFromInt(app.core.descriptor().width),
+        @floatFromInt(app.core.descriptor().height),
+    };
+    try app.controller.update(app);
+    try app.render.prepareWorld(encoder);
 
     const pass: *gpu.RenderPassEncoder = encoder.beginRenderPass(&render_pass_info);
     pass.setPipeline(app.pipeline);
-    try app.render.renderWorld(pass); //pass);
+    try app.render.renderWorld(pass);
     pass.end();
     pass.release();
 

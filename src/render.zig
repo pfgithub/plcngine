@@ -100,7 +100,7 @@ pub const Render = struct {
         return .{chunk_min, chunk_max};
     }
 
-    pub fn prepareWorld(render: *Render, 
+    pub fn prepareWorld(render: *Render,
         encoder: *gpu.CommandEncoder,
     ) !void {
         const world = render.world;
@@ -155,7 +155,6 @@ pub const Render = struct {
             });
         }
         if(cri.last_updated != chunk.last_updated) {
-            std.log.info("update chunk {d}", .{chunk.chunk_pos});
             cri.last_updated = chunk.last_updated;
             const data_layout = gpu.Texture.DataLayout{
                 .bytes_per_row = CHUNK_SIZE * 1, // width * channels
@@ -171,13 +170,13 @@ pub const Render = struct {
         const bl = render.worldPosToScreenPos( chunk_world_ul + Vec2i{0, CHUNK_SIZE} );
         const br = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, CHUNK_SIZE} );
         const vertices = &[VERTICES_LEN]App.Vertex{
-            .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 1 } },
-            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 1 } },
-            .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 0 } },
+            .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 } },
+            .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 } },
+            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 } },
 
-            .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 0 } },
-            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 1 } },
-            .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 0 } },
+            .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 } },
+            .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 } },
+            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 } },
         };
 
 
