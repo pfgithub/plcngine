@@ -12,24 +12,15 @@ const assets = struct {
     const gotta_go_fast_image = @embedFile("gotta-go-fast.png");
 };
 
-const Vertex = extern struct {
+pub const Vertex = extern struct {
     pos: @Vector(4, f32),
     uv: @Vector(2, f32),
 };
 
-const vertices = [_]Vertex{
-    .{ .pos = .{ -0.5, -0.5, 0, 1 }, .uv = .{ 0, 1 } },
-    .{ .pos = .{ 0.5, -0.5, 0, 1 }, .uv = .{ 1, 1 } },
-    .{ .pos = .{ -0.5, 0.5, 0, 1 }, .uv = .{ 0, 0 } },
-
-    .{ .pos = .{ -0.5, 0.5, 0, 1 }, .uv = .{ 0, 0 } },
-    .{ .pos = .{ 0.5, -0.5, 0, 1 }, .uv = .{ 1, 1 } },
-    .{ .pos = .{ 0.5, 0.5, 0, 1 }, .uv = .{ 1, 0 } },
-};
-
 pub const App = @This();
 
-const UniformBufferObject = struct {
+pub const UniformBufferObject = struct {
+    screen_size: @Vector(2, f32),
     color: u32,
 };
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -222,6 +213,10 @@ pub fn update(app: *App) !bool {
             .mip_level_count = 1,
         });
     }
+    app.render.window_size = .{
+        @floatFromInt(app.core.descriptor().width),
+        @floatFromInt(app.core.descriptor().height),
+    };
 
     const back_buffer_view = app.core.swapChain().getCurrentTextureView().?;
     const color_attachment = gpu.RenderPassColorAttachment{
@@ -242,52 +237,11 @@ pub fn update(app: *App) !bool {
         },
     });
 
-    const vertex_buffer = app.core.device().createBuffer(&.{
-        .usage = .{ .copy_dst = true, .vertex = true },
-        .size = @sizeOf(Vertex) * vertices.len,
-        .mapped_at_creation = false,
-    });
-    defer vertex_buffer.release();
-    encoder.writeBuffer(vertex_buffer, 0, vertices[0..]);
+    try app.render.prepareWorld(encoder); //pass);
 
-
-    const uniform_buffer = app.core.device().createBuffer(&.{
-        .usage = .{ .copy_dst = true, .uniform = true },
-        .size = @sizeOf(UniformBufferObject),
-        .mapped_at_creation = false,
-    });
-    defer uniform_buffer.release();
-
-    // Create a sampler with linear filtering for smooth interpolation.
-    const sampler = app.core.device().createSampler(&.{
-        .mag_filter = .nearest,
-        .min_filter = .nearest,
-    });
-    defer sampler.release();
-
-    const bind_group = app.core.device().createBindGroup(
-        &gpu.BindGroup.Descriptor.init(.{
-            .layout = app.pipeline.getBindGroupLayout(0),
-            .entries = &.{
-                gpu.BindGroup.Entry.buffer(0, uniform_buffer, 0, @sizeOf(UniformBufferObject)),
-                gpu.BindGroup.Entry.sampler(1, sampler),
-                gpu.BindGroup.Entry.textureView(2, app.cube_texture_view),
-            },
-        }),
-    );
-    defer bind_group.release();
-
-    const ubo = UniformBufferObject{
-        // .mat = zm.transpose(mvp),
-        .color = 0xFF0000FF,
-    };
-    encoder.writeBuffer(uniform_buffer, 0, &[_]UniformBufferObject{ubo});
-
-    const pass = encoder.beginRenderPass(&render_pass_info);
+    const pass: *gpu.RenderPassEncoder = encoder.beginRenderPass(&render_pass_info);
     pass.setPipeline(app.pipeline);
-    pass.setVertexBuffer(0, vertex_buffer, 0, @sizeOf(Vertex) * vertices.len);
-    pass.setBindGroup(0, bind_group, &.{});
-    pass.draw(vertices.len, 1, 0, 0);
+    try app.render.renderWorld(pass); //pass);
     pass.end();
     pass.release();
 

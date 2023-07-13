@@ -24,11 +24,11 @@ pub const Chunk = struct {
         }
         return @intCast(offset[1] * CHUNK_SIZE + offset[0]);
     }
-    fn getPixel(chunk: *const Chunk, offset: Vec2i) u8 {
+    pub fn getPixel(chunk: *const Chunk, offset: Vec2i) u8 {
         const index = itmIndex(offset) orelse unreachable;
         return chunk.texture[index];
     }
-    fn setPixel(chunk: *Chunk, offset: Vec2i, value: u8) void {
+    pub fn setPixel(chunk: *Chunk, offset: Vec2i, value: u8) void {
         const index = itmIndex(offset) orelse unreachable;
         chunk.texture[index] = value;
         chunk.last_updated += 1;
@@ -78,7 +78,7 @@ pub const World = struct {
         return chunk;
     }
 
-    fn getPixel(world: *World, pos: Vec2i) !u8 {
+    pub fn getPixel(world: *World, pos: Vec2i) !u8 {
         const target_chunk = worldPosToChunkPos(pos);
         const target_chunk_offset = target_chunk * Vec2i{CHUNK_SIZE, CHUNK_SIZE};
         const pos_offset = pos - target_chunk_offset;
@@ -86,7 +86,7 @@ pub const World = struct {
 
         return chunk_value.getPixel(pos_offset);
     }
-    fn setPixel(world: *World, pos: Vec2i, value: u8) !void {
+    pub fn setPixel(world: *World, pos: Vec2i, value: u8) !void {
         const target_chunk = worldPosToChunkPos(pos);
         const target_chunk_offset = target_chunk * Vec2i{CHUNK_SIZE, CHUNK_SIZE};
         const pos_offset = pos - target_chunk_offset;
@@ -95,7 +95,7 @@ pub const World = struct {
         return chunk_value.setPixel(pos_offset, value);
     }
 
-    fn worldPosToChunkPos(world_pos: Vec2i) Vec2i {
+    pub fn worldPosToChunkPos(world_pos: Vec2i) Vec2i {
         return @divFloor(world_pos, Vec2i{CHUNK_SIZE, CHUNK_SIZE});
     }
 };

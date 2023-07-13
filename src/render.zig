@@ -6,6 +6,11 @@ const Chunk = world_import.Chunk;
 const CHUNK_SIZE = world_import.CHUNK_SIZE;
 const App = @import("main2.zig");
 
+const x = math.x;
+const y = math.y;
+const z = math.z;
+const w = math.w;
+
 const mach = @import("mach");
 const gpu = mach.gpu;
 
@@ -23,10 +28,18 @@ pub const ChunkRenderInfo = struct {
 
     gpu_texture: *gpu.Texture = undefined, // last_updated 0 indicates that this is undefined and should not be used
     last_updated: usize = 0,
+    vertex_buffer: ?*gpu.Buffer = null,
+    bind_group: ?*gpu.BindGroup = null,
 
     pub fn deinit(cri: ChunkRenderInfo) void {
+        if(cri.vertex_buffer) |vb| {
+            vb.release();
+        }
+        if(cri.bind_group) |bg| {
+            bg.release();
+        }
         if(cri.last_updated != 0) {
-            cri.gpu_texture.destroy();
+            cri.gpu_texture.release();
         }
     }
 };
@@ -41,6 +54,8 @@ pub const Render = struct {
     center_scale: f32 = 1.0,
     window_size: Vec2f32 = .{0, 0},
 
+    uniform_buffer: ?*gpu.Buffer = null,
+
     world: *World,
     app: *App,
 
@@ -54,6 +69,7 @@ pub const Render = struct {
         return render;
     }
     pub fn destroy(render: *Render) void {
+        if(render.uniform_buffer) |b| b.release();
         render.alloc.destroy(render);
     }
 
@@ -71,9 +87,7 @@ pub const Render = struct {
         return render.window_size / @splat(2, @as(f32, 2.0));
     }
 
-    pub fn renderWorld(render: *Render) !void {
-        const world = render.world;
-
+    fn screenChunkBounds(render: *Render) [2]Vec2i {
         const screen_size = render.window_size;
         const ul = vf2i(render.screenToWorldPos(.{0, 0}));
         const ur = vf2i(render.screenToWorldPos(.{screen_size[0], 0}));
@@ -83,21 +97,50 @@ pub const Render = struct {
         const xy_max = @max(ul, ur, bl, br);
         const chunk_min = World.worldPosToChunkPos(xy_min);
         const chunk_max = World.worldPosToChunkPos(xy_max);
+        return .{chunk_min, chunk_max};
+    }
+
+    pub fn prepareWorld(render: *Render, 
+        encoder: *gpu.CommandEncoder,
+    ) !void {
+        const world = render.world;
+        const app = render.app;
+
+        if(render.uniform_buffer == null) {
+            render.uniform_buffer = app.core.device().createBuffer(&.{
+                .usage = .{ .copy_dst = true, .uniform = true },
+                .size = @sizeOf(App.UniformBufferObject),
+                .mapped_at_creation = false,
+            });
+        }
+        encoder.writeBuffer(render.uniform_buffer.?, 0, &[_]App.UniformBufferObject{.{
+            .screen_size = render.window_size,
+            .color = 0xFF0000FF,
+        }});
+
+        const chunk_b = render.screenChunkBounds();
+        const chunk_min = chunk_b[0];
+        const chunk_max = chunk_b[1];
 
         {var chunk_y = chunk_min[1]; while(chunk_y <= chunk_max[1]) : (chunk_y += 1) {
             {var chunk_x = chunk_min[0]; while(chunk_x <= chunk_max[0]) : (chunk_x += 1) {
                 const chunk_pos = Vec2i{chunk_x, chunk_y};
                 const target_chunk = try world.getOrLoadChunk(chunk_pos);
-                render.renderChunk(
+                render.prepareChunk(
                     target_chunk,
-                    render.center_scale,
-                    render.worldPosToScreenPos( chunk_pos * Vec2i{CHUNK_SIZE, CHUNK_SIZE} ),
+                    encoder,
                 );
             }}
         }}
     }
 
-    pub fn renderChunk(render: *Render, chunk: *Chunk, scale: f32, offset: Vec2f32) void {
+    const VERTICES_LEN = 6;
+    pub fn prepareChunk(
+        render: *Render,
+        chunk: *Chunk,
+        encoder: *gpu.CommandEncoder,
+    ) void {
+        const app = render.app;
         const cri = &chunk.chunk_render_info;
         const img_size = gpu.Extent3D{ .width = CHUNK_SIZE, .height = CHUNK_SIZE };
         if(cri.last_updated == 0) {
@@ -112,6 +155,7 @@ pub const Render = struct {
             });
         }
         if(cri.last_updated != chunk.last_updated) {
+            std.log.info("update chunk {d}", .{chunk.chunk_pos});
             cri.last_updated = chunk.last_updated;
             const data_layout = gpu.Texture.DataLayout{
                 .bytes_per_row = CHUNK_SIZE * 1, // width * channels
@@ -120,29 +164,87 @@ pub const Render = struct {
             render.app.queue.writeTexture(&.{ .texture = cri.gpu_texture }, &data_layout, &img_size, &chunk.texture);
         }
 
-        // each chunk will be drawn in a seperate render pass for now
-        // eventually we'll put all the chunks into one texture and render them all in one pass
 
-        // draw two triangles with uv coords of target texture
-        // int texture_loc = ray.GetShaderLocation(render.remap_colors_shader, "texture0");
-        // int swirl_center_loc = ray.GetShaderLocation(render.remap_colors_shader, "color_map");
-        //ray.SetShaderValueTexture(render.remap_colors_shader, cri.gpu_texture);
-        //ray.BeginShaderMode(render.remap_colors_shader, texture_loc, cri.gpu_texture);
+        const chunk_world_ul = chunk.chunk_pos * Vec2i{CHUNK_SIZE, CHUNK_SIZE};
+        const ul = render.worldPosToScreenPos( chunk_world_ul );
+        const ur = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, 0} );
+        const bl = render.worldPosToScreenPos( chunk_world_ul + Vec2i{0, CHUNK_SIZE} );
+        const br = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, CHUNK_SIZE} );
+        const vertices = &[VERTICES_LEN]App.Vertex{
+            .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 1 } },
+            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 1 } },
+            .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 0 } },
 
-        // if we draw triangles, we can convert the four corners to positions and draw those triangles
+            .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 0 } },
+            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 1 } },
+            .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 0 } },
+        };
 
-        // update vertex buffer if needed
 
-        // ray.DrawTextureEx(
-        //     cri.gpu_texture,
-        //     .{.x = offset[0], .y = offset[1]}, // position, for now
-        //     0,
-        //     scale, // scale, for now
-        //     .{.r = 255, .g = 255, .b = 255, .a = 255},
-        // );
-        _ = scale;
-        _ = offset;
+        if(cri.vertex_buffer == null) cri.vertex_buffer = app.core.device().createBuffer(&.{
+            .usage = .{ .copy_dst = true, .vertex = true },
+            .size = @sizeOf(App.Vertex) * vertices.len,
+            .mapped_at_creation = false,
+        });
+        encoder.writeBuffer(cri.vertex_buffer.?, 0, vertices);
 
-        //ray.EndShaderMode();
+
+        // Create a sampler with linear filtering for smooth interpolation.
+        const sampler = app.core.device().createSampler(&.{
+            .mag_filter = .nearest,
+            .min_filter = .nearest,
+        });
+        defer sampler.release();
+
+
+        const texture_view = cri.gpu_texture.createView(&gpu.TextureView.Descriptor{});
+        defer texture_view.release();
+
+
+        if(cri.bind_group) |prev_bg| prev_bg.release();
+        cri.bind_group = app.core.device().createBindGroup(
+            &gpu.BindGroup.Descriptor.init(.{
+                .layout = app.pipeline.getBindGroupLayout(0),
+                .entries = &.{
+                    gpu.BindGroup.Entry.buffer(0, render.uniform_buffer.?, 0, @sizeOf(App.UniformBufferObject)),
+                    gpu.BindGroup.Entry.sampler(1, sampler),
+                    gpu.BindGroup.Entry.textureView(2, texture_view),
+                },
+            }),
+        );
+    }
+
+    pub fn renderWorld(render: *Render,
+        pass: *gpu.RenderPassEncoder,
+    ) !void {
+        const world = render.world;
+
+        const chunk_b = render.screenChunkBounds();
+        const chunk_min = chunk_b[0];
+        const chunk_max = chunk_b[1];
+
+        {var chunk_y = chunk_min[1]; while(chunk_y <= chunk_max[1]) : (chunk_y += 1) {
+            {var chunk_x = chunk_min[0]; while(chunk_x <= chunk_max[0]) : (chunk_x += 1) {
+                const chunk_pos = Vec2i{chunk_x, chunk_y};
+                const target_chunk = try world.getOrLoadChunk(chunk_pos);
+                render.renderChunk(
+                    target_chunk,
+                    pass,
+                );
+            }}
+        }}
+    }
+
+    pub fn renderChunk(
+        render: *Render,
+        chunk: *Chunk,
+        pass: *gpu.RenderPassEncoder,
+    ) void {
+        _ = render;
+        const cri = &chunk.chunk_render_info;
+
+        pass.setVertexBuffer(0, cri.vertex_buffer.?, 0, @sizeOf(App.Vertex) * VERTICES_LEN);
+        pass.setBindGroup(0, cri.bind_group.?, &.{});
+        pass.draw(VERTICES_LEN, 1, 0, 0);
     }
 };

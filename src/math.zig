@@ -1,4 +1,8 @@
 const std = @import("std");
+pub const x = 0;
+pub const y = 1;
+pub const z = 2;
+pub const w = 3;
 
 pub const Vec2i = @Vector(2, i32);
 pub const Vec2f32 = @Vector(2, f32);

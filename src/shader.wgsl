@@ -9,12 +9,13 @@ fn vertex_main(
     @location(1) uv : vec2<f32>,
 ) -> VertexOutput {
     var output : VertexOutput;
-    output.Position = position;
+    output.Position = vec4(position.xy / uniforms.screen_size * 2.0 - 1.0, position.zw);
     output.fragUV = uv;
     return output;
 }
 
 struct Uniforms {
+    screen_size: vec2<f32>,
     color: u32,
 };
 
@@ -27,5 +28,5 @@ fn frag_main(
     @location(0) fragUV: vec2<f32>,
 ) -> @location(0) vec4<f32> {
     var sample = textureSample(myTexture, mySampler, fragUV);
-    return vec4f(sample.r, f32(uniforms.color) * 0.0 + sample.g, sample.b, sample.a);
+    return vec4f(sample.r, sample.g, sample.b, sample.a);
 }
