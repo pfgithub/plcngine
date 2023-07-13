@@ -267,10 +267,17 @@ const Controller = struct {
 };
 
 pub fn update(app: *App) !bool {
-    app.ih.startFrame();
     var iter = app.core.pollEvents();
     while (iter.next()) |event| {
+        app.ih.startFrame();
         try app.ih.update(event);
+
+        app.render.window_size = .{
+            @floatFromInt(app.core.descriptor().width),
+            @floatFromInt(app.core.descriptor().height),
+        };
+        try app.controller.update(app);
+
         switch (event) {
             .framebuffer_resize => {
                 // If window is resized, recreate depth buffer otherwise we cannot use it.
@@ -332,11 +339,6 @@ pub fn update(app: *App) !bool {
     //     else => {},
     // }
 
-    app.render.window_size = .{
-        @floatFromInt(app.core.descriptor().width),
-        @floatFromInt(app.core.descriptor().height),
-    };
-    try app.controller.update(app);
     try app.render.prepareWorld(encoder);
 
     const pass: *gpu.RenderPassEncoder = encoder.beginRenderPass(&render_pass_info);
