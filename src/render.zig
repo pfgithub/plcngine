@@ -188,10 +188,9 @@ pub const Render = struct {
         encoder.writeBuffer(cri.vertex_buffer.?, 0, vertices);
 
 
-        // Create a sampler with linear filtering for smooth interpolation.
         const sampler = app.core.device().createSampler(&.{
-            .mag_filter = .nearest,
-            .min_filter = .nearest,
+            .mag_filter = .linear,
+            .min_filter = .linear,
         });
         defer sampler.release();
 

@@ -54,7 +54,7 @@ controller: Controller,
 /// to get smooth pixel art when at edges.
 ///
 /// https://godotshaders.com/shader/smooth-3d-pixel-filtering/
-const sample_count = 1;
+const sample_count = 4;
 
 pub fn init(app: *App) !void {
     const allocator = gpa.allocator();
@@ -324,6 +324,7 @@ const Controller = struct {
 
             const mpos_after = render.screenToWorldPos(mp);
             render.center_offset -= mpos_after - mpos_before;
+            if(render.center_scale == 1.0) render.center_offset = @round(render.center_offset);
         }else if(ih.keys_held.get(.left_shift) or ih.keys_held.get(.right_shift)) {
             render.center_offset -= Vec2f32{mwheel_ray[0] + mwheel_ray[1], 0} / @splat(2, render.center_scale);
         }else{
