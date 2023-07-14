@@ -52,6 +52,8 @@ controller: Controller,
 /// we want SSAA not MSAA. MSAA only runs the fragment shader once per pixel using the
 /// center of the pixel. We want to supersample the fragment shader (2-4 samples per pixel)
 /// to get smooth pixel art when at edges.
+///
+/// https://godotshaders.com/shader/smooth-3d-pixel-filtering/
 const sample_count = 1;
 
 pub fn init(app: *App) !void {
