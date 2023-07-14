@@ -41,11 +41,18 @@ queue: *gpu.Queue,
 depth_texture: ?*gpu.Texture,
 depth_texture_view: ?*gpu.TextureView,
 cube_texture_view: *gpu.TextureView,
+texture: ?*gpu.Texture,
+texture_view: ?*gpu.TextureView,
 
 world: *World,
 render: *Render,
 ih: InputHelper,
 controller: Controller,
+
+/// we want SSAA not MSAA. MSAA only runs the fragment shader once per pixel using the
+/// center of the pixel. We want to supersample the fragment shader (2-4 samples per pixel)
+/// to get smooth pixel art when at edges.
+const sample_count = 1;
 
 pub fn init(app: *App) !void {
     const allocator = gpa.allocator();
@@ -119,9 +126,9 @@ pub fn init(app: *App) !void {
             // pointing toward the camera.
             .cull_mode = .back,
         },
-        // .multisample = .{
-        //     .count = 4,
-        // },
+        .multisample = .{
+            .count = sample_count,
+        },
     };
     const pipeline = app.core.device().createRenderPipeline(&pipeline_descriptor);
 
@@ -162,6 +169,8 @@ pub fn init(app: *App) !void {
     app.depth_texture_view = null;
     app.ih = .{};
     app.controller = .{};
+    app.texture = null;
+    app.texture_view = null;
 
     app.core.device().tick();
 }
@@ -172,6 +181,8 @@ pub fn deinit(app: *App) void {
 
     if(app.depth_texture) |dt| dt.release();
     if(app.depth_texture_view) |dtv| dtv.release();
+    if(app.texture) |dt| dt.release();
+    if(app.texture_view) |dtv| dtv.release();
     app.render.destroy();
     app.world.destroy();
 }
@@ -360,13 +371,23 @@ pub fn update(app: *App) !bool {
 
                 if(app.depth_texture_view) |dtv| dtv.release();
                 app.depth_texture_view = null;
+
+                if(app.texture) |dt| dt.release();
+                app.texture = null;
+
+                if(app.texture_view) |dtv| dtv.release();
+                app.texture_view = null;
             },
             .close => return true,
             else => {},
         }
     }
 
-    if(app.depth_texture == null and app.depth_texture_view == null) {
+    if(app.depth_texture == null) {
+        if(app.depth_texture_view != null) unreachable;
+        if(app.texture != null) unreachable;
+        if(app.texture_view != null) unreachable;
+
         app.depth_texture = app.core.device().createTexture(&gpu.Texture.Descriptor{
             .size = gpu.Extent3D{
                 .width = app.core.descriptor().width,
@@ -377,6 +398,7 @@ pub fn update(app: *App) !bool {
                 .render_attachment = true,
                 .texture_binding = true,
             },
+            .sample_count = sample_count,
         });
         app.depth_texture_view = app.depth_texture.?.createView(&gpu.TextureView.Descriptor{
             .format = .depth24_plus,
@@ -384,14 +406,26 @@ pub fn update(app: *App) !bool {
             .array_layer_count = 1,
             .mip_level_count = 1,
         });
+
+        app.texture = app.core.device().createTexture(&gpu.Texture.Descriptor{
+            .size = gpu.Extent3D{
+                .width = app.core.descriptor().width,
+                .height = app.core.descriptor().height,
+            },
+            .format = app.core.descriptor().format,
+            .usage = .{ .render_attachment = true },
+            .sample_count = sample_count,
+        });
+        app.texture_view = app.texture.?.createView(null);
     }
 
     const back_buffer_view = app.core.swapChain().getCurrentTextureView().?;
     const color_attachment = gpu.RenderPassColorAttachment{
-        .view = back_buffer_view,
+        .view = if(sample_count == 1) back_buffer_view else app.texture_view.?,
+        .resolve_target = if(sample_count == 1) null else back_buffer_view,
         .clear_value = .{ .r = 0.5, .g = 0.5, .b = 0.5, .a = 0.0 },
         .load_op = .clear,
-        .store_op = .store,
+        .store_op = if(sample_count == 1) .store else .discard,
     };
 
     const encoder = app.core.device().createCommandEncoder(null);
