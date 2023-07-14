@@ -207,8 +207,40 @@ const InputHelper = struct {
         mouse_press: EnumBitSet(Core.MouseButton) = EnumBitSet(Core.MouseButton).initEmpty(),
         mouse_release: EnumBitSet(Core.MouseButton) = EnumBitSet(Core.MouseButton).initEmpty(),
         mouse_scroll: Vec2f32 = .{0, 0},
+        mouse_delta: Vec2f32 = .{0, 0},
     } = .{},
 
+    const ModKeysInit = packed struct {
+        ctrl: bool = false,
+        alt: bool = false,
+        shift: bool = false,
+        super: bool = false,
+        _rem: u4 = 0,
+    };
+    const ModKeys = enum(u8) {
+        _,
+        fn from(keys: ModKeysInit) ModKeys {
+            return @enumFromInt(@as(u8, @bitCast(keys)));
+        }
+        fn to(keys: ModKeys) ModKeysInit {
+            return @bitCast(keys);
+        }
+        fn eql(self: ModKeys, keys: ModKeysInit) bool {
+            return self == ModKeys.from(keys);
+        }
+    };
+
+    fn modifiers(ih: *const InputHelper) ModKeys {
+        return ModKeys.from(.{
+            .ctrl = ih.keys_held.get(.left_control) or ih.keys_held.get(.right_control),
+            .alt = ih.keys_held.get(.left_alt) or ih.keys_held.get(.right_alt),
+            .shift = ih.keys_held.get(.left_shift) or ih.keys_held.get(.right_shift),
+            .super = ih.keys_held.get(.left_super) or ih.keys_held.get(.right_super),
+        });
+    }
+    fn modsEql(ih: *const InputHelper, keys: ModKeysInit) bool {
+        return ih.modifiers().eql(keys);
+    }
     fn startFrame(ih: *InputHelper) void {
         ih.frame = .{};
     }
@@ -228,15 +260,23 @@ const InputHelper = struct {
             .mouse_press => |ev| {
                 ih.mouse_held.set(ev.button, true);
                 ih.frame.mouse_press.set(ev.button, true);
-                ih.mouse_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
+
+                const new_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
+                if(ih.mouse_pos) |prev_pos| ih.frame.mouse_delta += new_pos - prev_pos;
+                ih.mouse_pos = new_pos;
             },
             .mouse_release => |ev| {
                 ih.mouse_held.set(ev.button, false);
                 ih.frame.mouse_release.set(ev.button, true);
-                ih.mouse_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
+
+                const new_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
+                if(ih.mouse_pos) |prev_pos| ih.frame.mouse_delta += new_pos - prev_pos;
+                ih.mouse_pos = new_pos;
             },
             .mouse_motion => |ev| {
-                ih.mouse_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
+                const new_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
+                if(ih.mouse_pos) |prev_pos| ih.frame.mouse_delta += new_pos - prev_pos;
+                ih.mouse_pos = new_pos;
             },
             .mouse_scroll => |ev| {
                 ih.frame.mouse_scroll = Vec2f32{ev.xoffset, ev.yoffset};
@@ -244,16 +284,50 @@ const InputHelper = struct {
             else => {},
         }
     }
+
+    fn isCursorHidden(_: *const InputHelper) bool {
+        return false;
+    }
 };
 const Controller = struct {
     prev_world_pos: ?Vec2i = null,
     fn update(controller: *Controller, app: *App) !void {
         const render = app.render;
         const world = app.world;
-        const ih = app.ih;
+        const ih = &app.ih;
 
-        const world_pos = vf2i(render.screenToWorldPos(app.ih.mouse_pos orelse Vec2f32{-1, -1}));
-        if(ih.mouse_held.get(.left)) {
+        const mp = app.ih.mouse_pos orelse Vec2f32{-1, -1};
+
+        const mwheel_mul: Vec2f32 = .{20.0, 20.0};
+        const mwheel_ray = ih.frame.mouse_scroll * mwheel_mul;
+        if(ih.modsEql(.{.ctrl = true}) or ih.modsEql(.{.alt = true})) {
+            const mpos_before = render.screenToWorldPos(mp);
+
+            const wheel: f32 = (mwheel_ray[0] + mwheel_ray[1]) / 120.0;
+            const zoom: f32 = std.math.pow(f32, 1 + @fabs(wheel) / 2, @as(f32, if(wheel > 0) 1 else -1));
+            render.center_scale *= zoom;
+            if(render.center_scale < 1.0) render.center_scale = 1.0;
+            if(render.center_scale > 2048.0) render.center_scale = 2048.0;
+
+            const mpos_after = render.screenToWorldPos(mp);
+            render.center_offset -= mpos_after - mpos_before;
+        }else if(ih.keys_held.get(.left_shift) or ih.keys_held.get(.right_shift)) {
+            render.center_offset -= Vec2f32{mwheel_ray[0] + mwheel_ray[1], 0} / @splat(2, render.center_scale);
+        }else{
+            render.center_offset -= mwheel_ray / @splat(2, render.center_scale);
+        }
+        if(ih.isCursorHidden()) {
+            const mmove_vec = ih.frame.mouse_delta;
+
+            render.center_offset += mmove_vec / @splat(2, render.center_scale);
+        }
+        if(ih.mouse_held.get(.middle) or (ih.mouse_held.get(.left) and ih.modsEql(.{.alt = true}))) {
+            render.center_offset -= ih.frame.mouse_delta / @splat(2, render.center_scale);
+        }
+
+
+        const world_pos = vf2i(render.screenToWorldPos(mp));
+        if(ih.mouse_held.get(.left) and ih.modsEql(.{})) {
             if(controller.prev_world_pos == null) controller.prev_world_pos = world_pos;
             var lp = math.LinePlotter.init(controller.prev_world_pos.?, world_pos);
             while(lp.next()) |pos| {
