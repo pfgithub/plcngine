@@ -3,6 +3,7 @@ const render_import = @import("render.zig");
 const World = world_import.World;
 const Render = render_import.Render;
 const math = @import("math.zig");
+const FramerateCounter = @import("util/framerate_counter.zig");
 
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
@@ -48,6 +49,7 @@ world: *World,
 render: *Render,
 ih: InputHelper,
 controller: Controller,
+frc: FramerateCounter,
 
 /// we want SSAA not MSAA. MSAA only runs the fragment shader once per pixel using the
 /// center of the pixel. We want to supersample the fragment shader (2-4 samples per pixel)
@@ -173,6 +175,7 @@ pub fn init(app: *App) !void {
     app.controller = .{};
     app.texture = null;
     app.texture_view = null;
+    app.frc = FramerateCounter.init();
 
     app.core.device().tick();
 }
@@ -422,6 +425,14 @@ pub fn update(app: *App) !bool {
         app.texture_view = app.texture.?.createView(null);
     }
 
+    // switch (ev.key) {
+    //     .space => return true,
+    //     .one => app.core.setVSync(.none),
+    //     .two => app.core.setVSync(.double),
+    //     .three => app.core.setVSync(.triple),
+    //     else => {},
+    // }
+
     const back_buffer_view = app.core.swapChain().getCurrentTextureView().?;
     const color_attachment = gpu.RenderPassColorAttachment{
         .view = if(sample_count == 1) back_buffer_view else app.texture_view.?,
@@ -441,14 +452,6 @@ pub fn update(app: *App) !bool {
             .depth_store_op = .store,
         },
     });
-
-    // switch (ev.key) {
-    //     .space => return true,
-    //     .one => app.core.setVSync(.none),
-    //     .two => app.core.setVSync(.double),
-    //     .three => app.core.setVSync(.triple),
-    //     else => {},
-    // }
 
     try app.render.prepareWorld(encoder);
 
@@ -476,6 +479,11 @@ pub fn update(app: *App) !bool {
     // }
 
     app.core.device().tick();
+
+    app.frc.onFrame();
+    var buf: [64]u8 = undefined;
+    const title = try std.fmt.bufPrintZ(&buf, "plcngine [ FPS: {d:.2} ]", .{ app.frc.getFramerate() });
+    app.core.setTitle(title);
 
     return false;
 }
