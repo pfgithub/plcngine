@@ -100,6 +100,15 @@ pub const Render = struct {
         return .{chunk_min, chunk_max};
     }
 
+    fn color(col: u32) @Vector(4, f32) {
+        return @Vector(4, f32){
+            @floatFromInt( (col & 0xFF000000) >> 24 ),
+            @floatFromInt( (col & 0x00FF0000) >> 16 ),
+            @floatFromInt( (col & 0x0000FF00) >> 8 ),
+            @floatFromInt( (col & 0x000000FF) >> 0 ),
+        } / @splat(4, @as(f32, 255.0));
+    }
+
     pub fn prepareWorld(render: *Render,
         encoder: *gpu.CommandEncoder,
     ) !void {
@@ -115,7 +124,12 @@ pub const Render = struct {
         }
         encoder.writeBuffer(render.uniform_buffer.?, 0, &[_]App.UniformBufferObject{.{
             .screen_size = render.window_size,
-            .color = 0xFF0000FF,
+            .colors = .{
+                color(0xCCFFE5_FF),
+                color(0x48FFA7_FF),
+                color(0x00821F_FF),
+                color(0x002C0A_FF),
+            },
         }});
 
         const chunk_b = render.screenChunkBounds();
@@ -189,8 +203,8 @@ pub const Render = struct {
 
 
         const sampler = app.core.device().createSampler(&.{
-            .mag_filter = .linear,
-            .min_filter = .linear,
+            .mag_filter = .nearest,
+            .min_filter = .nearest,
         });
         defer sampler.release();
 

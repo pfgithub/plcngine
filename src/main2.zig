@@ -26,9 +26,9 @@ pub const Vertex = extern struct {
 
 pub const App = @This();
 
-pub const UniformBufferObject = struct {
+pub const UniformBufferObject = extern struct {
     screen_size: @Vector(2, f32),
-    color: u32,
+    colors: [4]@Vector(4, f32),
 };
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
@@ -72,7 +72,7 @@ pub fn init(app: *App) !void {
     app.render = try Render.create(allocator, app.world, app);
     errdefer app.render.destroy();
 
-    const shader_module = app.core.device().createShaderModuleWGSL("shader.wgsl", @embedFile("shader.wgsl"));
+    const shader_module = app.core.device().createShaderModuleWGSL("shader.wgsl", @embedFile("shaders/indexed_image.wgsl"));
     defer shader_module.release();
 
     const vertex_attributes = [_]gpu.VertexAttribute{
@@ -345,7 +345,7 @@ const Controller = struct {
             if(controller.prev_world_pos == null) controller.prev_world_pos = world_pos;
             var lp = math.LinePlotter.init(controller.prev_world_pos.?, world_pos);
             while(lp.next()) |pos| {
-                try world.setPixel(pos, 255);
+                try world.setPixel(pos, 4);
             }
             controller.prev_world_pos = world_pos;
         }else{
