@@ -1,17 +1,25 @@
 const td = @import("tool.zig");
 
 const State = struct {
-    prev_pos: ?Vec2i,
+    prev_pos: ?Vec2i = null,
+    // TODO: store the full line & then put it all in one transaction
 };
 const Config = struct {
-    width: i32,
+    width: i32 = 1,
 };
 
 const Tool = struct {
-    config: Config,
-    state: State,
+    config: Config = .{},
+    state: State = .{},
 
-    pub fn input(ev) {
+    pub fn init() Tool {
+        return .{};
+    }
+    pub fn deinit(_: *Tool) void {}
+
+    pub fn input(tool: *Tool, ev) {
+        const state = &tool.state;
+
         const world = ev.world;
         const world_pos = ev.mouse_pos;
         // updates the image
@@ -29,14 +37,23 @@ const Tool = struct {
             },
         }
     }
-    pub fn renderPreview() {
+    pub fn renderPreview(_: *Tool) {
         // renders the preview
     }
 
     pub fn descriptor(tool: *Tool) td.ToolDescriptor {
         return .{
-            .renderPreview = renderPreview,
-            .input = input,
+            .content = @ptrCast(tool),
+            .renderPreview = fn{
+                fn aa(tool: *opaque{}) {
+                    return renderPreview(@ptrCast(tool));
+                }
+            }.a,
+            .input = fn{
+                fn aa(tool: *opaque{}) {
+                    return input(@ptrCast(tool));
+                }
+            }.aa,
         };
     },
 };
