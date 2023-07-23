@@ -11,13 +11,18 @@ const vf2i = math.vf2i;
 pub const EntityID = enum(u32) {none, _};
 
 pub const CHUNK_SIZE = 2048; // 2048
+pub const CHUNK_VERSION = 0;
 pub const Chunk = struct {
     chunk_pos: Vec2i,
     texture: [CHUNK_SIZE * CHUNK_SIZE]u8 = [_]u8{0} ** (CHUNK_SIZE * CHUNK_SIZE), // 8bpp image data, shader to remap colors based on entity
-    entities: [1024]EntityID = [_]EntityID{.none} ** 1024,
+    //entities: [1024]EntityID = [_]EntityID{.none} ** 1024,
     chunk_render_info: render.ChunkRenderInfo = .{},
-    last_updated: usize = 1,
+    last_updated: u64 = 1,
+    last_used: u64 = 0,
 
+    pub fn deinit(chunk: *Chunk) void {
+        chunk.chunk_render_info.deinit();
+    }
     fn itmIndex(offset: Vec2i) ?usize {
         if(@reduce(.Or, offset < Vec2i{0, 0}) or @reduce(.Or, offset >= Vec2i{CHUNK_SIZE, CHUNK_SIZE})) {
             return null;
@@ -33,6 +38,23 @@ pub const Chunk = struct {
         chunk.texture[index] = value;
         chunk.last_updated += 1;
     }
+
+    const FILE_HEADER = std.mem.printComptime("plc_chunk_v{d}_s{d}:", .{CHUNK_VERSION, CHUNK_SIZE});
+    pub fn serialize(chunk: Chunk, writer: anytype) !void {
+        try writer.writeAll(FILE_HEADER);
+        try writer.writeAll(chunk.texture);
+    }
+    pub fn deserialize(out: *Chunk, reader: anytype) !void {
+        var header: [FILE_HEADER.len]u8 = undefined;
+        try reader.readAtLeast(&header, header.len);
+        if(!std.mem.eql(u8, header, FILE_HEADER)) {
+            return error.BadFile;
+        }
+
+        try reader.readAtLeast(&out.texture, out.texture.len);
+
+        if(reader.readByte() != error.EndOfStream) return error.BadFile;
+    }
 };
 
 pub const Entity = struct {};
@@ -41,6 +63,7 @@ pub const World = struct {
     alloc: std.mem.Allocator,
     loaded_chunks: std.ArrayList(*Chunk), // we can also do [512]?*Chunk or something
     entities: std.ArrayList(*Entity),
+    frame_index: u64 = 0,
 
     pub fn create(alloc: std.mem.Allocator) !*World {
         const world = try alloc.create(World);
@@ -53,7 +76,7 @@ pub const World = struct {
     }
     pub fn destroy(world: *World) void {
         for(world.loaded_chunks.items) |chunk| {
-            chunk.chunk_render_info.deinit();
+            chunk.deinit();
             world.alloc.destroy(chunk);
         }
         world.loaded_chunks.deinit();
@@ -61,9 +84,27 @@ pub const World = struct {
         world.alloc.destroy(world);
     }
 
+    pub fn clearUnusedChunks(world: *World) void {
+        // array size decreases while going through this loop; keep the original size outside
+        const loaded_chunks_len = world.loaded_chunks.items.len;
+        for(0..loaded_chunks_len) |chunk_index_inv| { // 0 1 2 3 => 3 2 1 0
+            const chunk_index = loaded_chunks_len - 1 - chunk_index_inv;
+            const chunk = world.loaded_chunks.items[chunk_index];
+            if(world.frame_index != chunk.last_used) {
+                std.log.info("UNLOAD: {d}", .{chunk.chunk_pos});
+
+                chunk.deinit();
+                world.alloc.destroy(chunk);
+
+                // fills from the end of the list so it's okay as long as we loop backwards
+                _ = world.loaded_chunks.swapRemove(chunk_index);
+            }
+        }
+    }
     pub fn getOrLoadChunk(world: *World, chunk_pos: Vec2i) !*Chunk {
         for(world.loaded_chunks.items) |chunk| {
             if(@reduce(.And, chunk.chunk_pos == chunk_pos)) {
+                chunk.last_used = world.frame_index;
                 return chunk;
             }
         }
@@ -73,6 +114,7 @@ pub const World = struct {
         var chunk = try world.alloc.create(Chunk);
         chunk.* = .{
             .chunk_pos = chunk_pos,
+            .last_used = world.frame_index,
         };
         try world.loaded_chunks.append(chunk);
         return chunk;

@@ -27,7 +27,7 @@ pub const ChunkRenderInfo = struct {
     // is that good? idk
 
     gpu_texture: *gpu.Texture = undefined, // last_updated 0 indicates that this is undefined and should not be used
-    last_updated: usize = 0,
+    last_updated: u64 = 0,
     vertex_buffer: ?*gpu.Buffer = null,
     bind_group: ?*gpu.BindGroup = null,
 

@@ -305,6 +305,10 @@ const InputHelper = struct {
         return false;
     }
 };
+fn appTick(app: *App) !void {
+    app.world.clearUnusedChunks();
+    app.world.frame_index += 1;
+}
 const Controller = struct {
     prev_world_pos: ?Vec2i = null,
     fn update(controller: *Controller, app: *App) !void {
@@ -316,6 +320,9 @@ const Controller = struct {
 
         const mwheel_mul: Vec2f32 = .{20.0, 20.0};
         const mwheel_ray = ih.frame.mouse_scroll * mwheel_mul;
+        if((ih.modsEql(.{.ctrl = true}) or ih.modsEql(.{.super = true})) and ih.frame.key_press.get(.s)) {
+            std.log.info("Save", .{});
+        }
         if(ih.modsEql(.{.ctrl = true}) or ih.modsEql(.{.alt = true})) {
             const mpos_before = render.screenToWorldPos(mp);
 
@@ -424,6 +431,9 @@ pub fn update(app: *App) !bool {
         });
         app.texture_view = app.texture.?.createView(null);
     }
+
+    // TODO limit to 20tps:
+    try app.appTick();
 
     // switch (ev.key) {
     //     .space => return true,
