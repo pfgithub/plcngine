@@ -19,6 +19,33 @@ const Vec2f32 = math.Vec2f32;
 const vi2f = math.vi2f;
 const vf2i = math.vf2i;
 
+pub const RectOpts = struct {
+    ul: Vec2f32,
+    ur: ?Vec2f32,
+    bl: ?Vec2f32,
+    br: Vec2f32,
+    draw_colors: u32, // octal literal
+};
+pub fn vertexRect(
+    opts: RectOpts,
+) [6]App.Vertex {
+    const ul = opts.ul;
+    const ur = opts.ur orelse Vec2f32{opts.br[x], opts.ul[y]};
+    const bl = opts.bl orelse Vec2f32{opts.ul[x], opts.br[y]};
+    const br = opts.br;
+    const draw_colors = opts.draw_colors;
+
+    return [6]App.Vertex{
+        .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .draw_colors = draw_colors },
+        .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 }, .draw_colors = draw_colors },
+        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .draw_colors = draw_colors },
+
+        .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .draw_colors = draw_colors },
+        .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .draw_colors = draw_colors },
+        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .draw_colors = draw_colors },
+    };
+}
+
 pub const ChunkRenderInfo = struct {
     // it might be possible to keep one big gpu texture and update subtextures of it:
     // UpdateTextureRec(Texture2D texture, Rectangle rec, const void *pixels)
@@ -179,21 +206,13 @@ pub const Render = struct {
 
 
         const chunk_world_ul = chunk.chunk_pos * Vec2i{CHUNK_SIZE, CHUNK_SIZE};
-        const ul = render.worldPosToScreenPos( chunk_world_ul );
-        const ur = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, 0} );
-        const bl = render.worldPosToScreenPos( chunk_world_ul + Vec2i{0, CHUNK_SIZE} );
-        const br = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, CHUNK_SIZE} );
-        const draw_colors: i32 = 0o07743210;
-        const vertices = &[VERTICES_LEN]App.Vertex{
-            .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .draw_colors = draw_colors },
-            .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 }, .draw_colors = draw_colors },
-            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .draw_colors = draw_colors },
-
-            .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .draw_colors = draw_colors },
-            .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .draw_colors = draw_colors },
-            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .draw_colors = draw_colors },
-        };
-
+        const vertices = &vertexRect(.{
+            .ul = render.worldPosToScreenPos( chunk_world_ul ),
+            .ur = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, 0} ),
+            .bl = render.worldPosToScreenPos( chunk_world_ul + Vec2i{0, CHUNK_SIZE} ),
+            .br = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, CHUNK_SIZE} ),
+            .draw_colors = 0o07743210,
+        });
 
         if(cri.vertex_buffer == null) cri.vertex_buffer = app.core.device().createBuffer(&.{
             .usage = .{ .copy_dst = true, .vertex = true },
