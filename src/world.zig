@@ -19,6 +19,7 @@ pub const Chunk = struct {
     chunk_render_info: render.ChunkRenderInfo = .{},
     last_updated: u64 = 1,
     last_used: u64 = 0,
+    last_saved: u64 = 0,
 
     pub fn deinit(chunk: *Chunk) void {
         chunk.chunk_render_info.deinit();
@@ -54,6 +55,8 @@ pub const Chunk = struct {
         if(try reader.readAtLeast(&out.texture, out.texture.len) != out.texture.len) return error.BadFile;
 
         if(reader.readByte() != error.EndOfStream) return error.BadFile;
+
+        out.last_saved = out.last_updated;
     }
 };
 
@@ -92,6 +95,8 @@ pub const World = struct {
         ) catch unreachable;
     }
     pub fn saveChunk(chunk: *Chunk) !void {
+        if(chunk.last_saved == chunk.last_updated) return; // no changes to save
+
         var out_name_buffer: [128]u8 = undefined;
         const out_name_str = chunkFilename(&out_name_buffer, chunk.chunk_pos);
 
