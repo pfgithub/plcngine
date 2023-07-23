@@ -39,19 +39,19 @@ pub const Chunk = struct {
         chunk.last_updated += 1;
     }
 
-    const FILE_HEADER = std.mem.printComptime("plc_chunk_v{d}_s{d}:", .{CHUNK_VERSION, CHUNK_SIZE});
+    const FILE_HEADER = std.fmt.comptimePrint("plc_chunk_v{d}_s{d}:", .{CHUNK_VERSION, CHUNK_SIZE});
     pub fn serialize(chunk: Chunk, writer: anytype) !void {
         try writer.writeAll(FILE_HEADER);
-        try writer.writeAll(chunk.texture);
+        try writer.writeAll(&chunk.texture);
     }
     pub fn deserialize(out: *Chunk, reader: anytype) !void {
         var header: [FILE_HEADER.len]u8 = undefined;
-        try reader.readAtLeast(&header, header.len);
-        if(!std.mem.eql(u8, header, FILE_HEADER)) {
+        if(try reader.readAtLeast(&header, header.len) != header.len) return error.BadFile;
+        if(!std.mem.eql(u8, &header, FILE_HEADER)) {
             return error.BadFile;
         }
 
-        try reader.readAtLeast(&out.texture, out.texture.len);
+        if(try reader.readAtLeast(&out.texture, out.texture.len) != out.texture.len) return error.BadFile;
 
         if(reader.readByte() != error.EndOfStream) return error.BadFile;
     }
@@ -84,7 +84,30 @@ pub const World = struct {
         world.alloc.destroy(world);
     }
 
-    pub fn clearUnusedChunks(world: *World) void {
+    pub fn chunkFilename(buf: *[128]u8, pos: Vec2i) []const u8 {
+        return std.fmt.bufPrint(
+            buf,
+            "saves/world0/chunks/C[{x},{x}].plc_chunk",
+            .{pos[0], pos[1]},
+        ) catch unreachable;
+    }
+    pub fn saveChunk(chunk: *Chunk) !void {
+        var out_name_buffer: [128]u8 = undefined;
+        const out_name_str = chunkFilename(&out_name_buffer, chunk.chunk_pos);
+
+        var out_file = try std.fs.cwd().atomicFile(out_name_str, .{});
+        defer out_file.deinit();
+
+        const of_writer = out_file.file.writer(); // todo std.io.BufferedWriter
+
+        try chunk.serialize(of_writer);
+
+        try out_file.finish();
+
+        std.log.info("saved to {s}", .{out_name_str});
+    }
+
+    pub fn clearUnusedChunks(world: *World) !void {
         // array size decreases while going through this loop; keep the original size outside
         const loaded_chunks_len = world.loaded_chunks.items.len;
         for(0..loaded_chunks_len) |chunk_index_inv| { // 0 1 2 3 => 3 2 1 0
@@ -93,12 +116,19 @@ pub const World = struct {
             if(world.frame_index != chunk.last_used) {
                 std.log.info("UNLOAD: {d}", .{chunk.chunk_pos});
 
+                try saveChunk(chunk);
+
                 chunk.deinit();
                 world.alloc.destroy(chunk);
 
                 // fills from the end of the list so it's okay as long as we loop backwards
                 _ = world.loaded_chunks.swapRemove(chunk_index);
             }
+        }
+    }
+    pub fn saveAll(world: *World) !void {
+        for(world.loaded_chunks.items) |chunk| {
+            try saveChunk(chunk);
         }
     }
     pub fn getOrLoadChunk(world: *World, chunk_pos: Vec2i) !*Chunk {
@@ -109,13 +139,31 @@ pub const World = struct {
             }
         }
         // chunk is not loaded ; load
-        // chunk file does not exist ; create
-        std.log.info("create chunk: {any}", .{chunk_pos});
         var chunk = try world.alloc.create(Chunk);
         chunk.* = .{
             .chunk_pos = chunk_pos,
             .last_used = world.frame_index,
         };
+
+        var chunk_name_buffer: [128]u8 = undefined;
+        const chunk_name_str = chunkFilename(&chunk_name_buffer, chunk.chunk_pos);
+
+        file_not_found: {
+            const file = std.fs.cwd().openFile(chunk_name_str, .{.mode = .read_only}) catch |err| switch(err) {
+                error.FileNotFound => break :file_not_found,
+                else => return err,
+            };
+            defer file.close();
+            std.log.info("load chunk: {x}", .{chunk_pos});
+
+            const reader = file.reader(); // TODO BufferedReader
+            try chunk.deserialize(reader);
+            try world.loaded_chunks.append(chunk);
+            return chunk;
+        }
+
+        // chunk file does not exist ; create
+        std.log.info("create chunk: {any}", .{chunk_pos});
         try world.loaded_chunks.append(chunk);
         return chunk;
     }

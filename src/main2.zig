@@ -306,7 +306,7 @@ const InputHelper = struct {
     }
 };
 fn appTick(app: *App) !void {
-    app.world.clearUnusedChunks();
+    try app.world.clearUnusedChunks();
     app.world.frame_index += 1;
 }
 const Controller = struct {
@@ -391,7 +391,10 @@ pub fn update(app: *App) !bool {
                 if(app.texture_view) |dtv| dtv.release();
                 app.texture_view = null;
             },
-            .close => return true,
+            .close => {
+                try app.world.saveAll();
+                return true;
+            },
             else => {},
         }
     }
