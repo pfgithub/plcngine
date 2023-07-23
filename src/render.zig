@@ -183,14 +183,15 @@ pub const Render = struct {
         const ur = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, 0} );
         const bl = render.worldPosToScreenPos( chunk_world_ul + Vec2i{0, CHUNK_SIZE} );
         const br = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, CHUNK_SIZE} );
+        const draw_colors: i32 = 0o07743210;
         const vertices = &[VERTICES_LEN]App.Vertex{
-            .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 } },
-            .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 } },
-            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 } },
+            .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .draw_colors = draw_colors },
+            .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 }, .draw_colors = draw_colors },
+            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .draw_colors = draw_colors },
 
-            .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 } },
-            .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 } },
-            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 } },
+            .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .draw_colors = draw_colors },
+            .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .draw_colors = draw_colors },
+            .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .draw_colors = draw_colors },
         };
 
 
