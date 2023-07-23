@@ -40,9 +40,6 @@ fps_timer: mach.Timer,
 window_title_timer: mach.Timer,
 pipeline: *gpu.RenderPipeline,
 queue: *gpu.Queue,
-depth_texture: ?*gpu.Texture,
-depth_texture_view: ?*gpu.TextureView,
-cube_texture_view: *gpu.TextureView,
 texture: ?*gpu.Texture,
 texture_view: ?*gpu.TextureView,
 
@@ -114,13 +111,6 @@ pub fn init(app: *App) !void {
 
     const pipeline_descriptor = gpu.RenderPipeline.Descriptor{
         .fragment = &fragment,
-        // Enable depth testing so that the fragment closest to the camera
-        // is rendered in front.
-        .depth_stencil = &.{
-            .format = .depth24_plus,
-            .depth_write_enabled = true,
-            .depth_compare = .less,
-        },
         .vertex = gpu.VertexState.init(.{
             .module = shader_module,
             .entry_point = "vertex_main",
@@ -139,40 +129,12 @@ pub fn init(app: *App) !void {
     const pipeline = app.core.device().createRenderPipeline(&pipeline_descriptor);
 
     const queue = app.core.device().getQueue();
-    var img = try zigimg.Image.fromMemory(allocator, assets.gotta_go_fast_image);
-    defer img.deinit();
-    const img_size = gpu.Extent3D{ .width = @as(u32, @intCast(img.width)), .height = @as(u32, @intCast(img.height)) };
-    const cube_texture = app.core.device().createTexture(&.{
-        .size = img_size,
-        .format = .rgba8_unorm,
-        .usage = .{
-            .texture_binding = true,
-            .copy_dst = true,
-            .render_attachment = true,
-        },
-    });
-    const data_layout = gpu.Texture.DataLayout{
-        .bytes_per_row = @as(u32, @intCast(img.width * 4)),
-        .rows_per_image = @as(u32, @intCast(img.height)),
-    };
-    switch (img.pixels) {
-        .rgba32 => |pixels| queue.writeTexture(&.{ .texture = cube_texture }, &data_layout, &img_size, pixels),
-        .rgb24 => |pixels| {
-            const data = try rgb24ToRgba32(allocator, pixels);
-            defer data.deinit(allocator);
-            queue.writeTexture(&.{ .texture = cube_texture }, &data_layout, &img_size, data.rgba32);
-        },
-        else => @panic("unsupported image color format"),
-    }
-    app.cube_texture_view = cube_texture.createView(&gpu.TextureView.Descriptor{});
 
     app.timer = try mach.Timer.start();
     app.fps_timer = try mach.Timer.start();
     app.window_title_timer = try mach.Timer.start();
     app.pipeline = pipeline;
     app.queue = queue;
-    app.depth_texture = null;
-    app.depth_texture_view = null;
     app.ih = .{};
     app.controller = .{};
     app.texture = null;
@@ -186,8 +148,6 @@ pub fn deinit(app: *App) void {
     defer _ = gpa.deinit();
     defer app.core.deinit();
 
-    if(app.depth_texture) |dt| dt.release();
-    if(app.depth_texture_view) |dtv| dtv.release();
     if(app.texture) |dt| dt.release();
     if(app.texture_view) |dtv| dtv.release();
     app.render.destroy();
@@ -380,13 +340,6 @@ pub fn update(app: *App) !bool {
 
         switch (event) {
             .framebuffer_resize => {
-                // If window is resized, recreate depth buffer otherwise we cannot use it.
-                if(app.depth_texture) |dt| dt.release();
-                app.depth_texture = null;
-
-                if(app.depth_texture_view) |dtv| dtv.release();
-                app.depth_texture_view = null;
-
                 if(app.texture) |dt| dt.release();
                 app.texture = null;
 
@@ -401,29 +354,9 @@ pub fn update(app: *App) !bool {
         }
     }
 
-    if(app.depth_texture == null) {
-        if(app.depth_texture_view != null) unreachable;
+    if(app.texture == null) {
         if(app.texture != null) unreachable;
         if(app.texture_view != null) unreachable;
-
-        app.depth_texture = app.core.device().createTexture(&gpu.Texture.Descriptor{
-            .size = gpu.Extent3D{
-                .width = app.core.descriptor().width,
-                .height = app.core.descriptor().height,
-            },
-            .format = .depth24_plus,
-            .usage = .{
-                .render_attachment = true,
-                .texture_binding = true,
-            },
-            .sample_count = sample_count,
-        });
-        app.depth_texture_view = app.depth_texture.?.createView(&gpu.TextureView.Descriptor{
-            .format = .depth24_plus,
-            .dimension = .dimension_2d,
-            .array_layer_count = 1,
-            .mip_level_count = 1,
-        });
 
         app.texture = app.core.device().createTexture(&gpu.Texture.Descriptor{
             .size = gpu.Extent3D{
@@ -460,12 +393,6 @@ pub fn update(app: *App) !bool {
     const encoder = app.core.device().createCommandEncoder(null);
     const render_pass_info = gpu.RenderPassDescriptor.init(.{
         .color_attachments = &.{color_attachment},
-        .depth_stencil_attachment = &.{
-            .view = app.depth_texture_view.?,
-            .depth_clear_value = 1.0,
-            .depth_load_op = .clear,
-            .depth_store_op = .store,
-        },
     });
 
     try app.render.prepareWorld(encoder);
