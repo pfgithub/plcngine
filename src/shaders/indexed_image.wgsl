@@ -3,6 +3,11 @@ struct VertexOutput {
     @location(0) fragUV : vec2<f32>,
     @location(1) @interpolate(flat) draw_colors: u32,
     @location(2) rectUV : vec2<f32>,
+
+    @location(3) corner_1 : vec2<f32>,
+    @location(4) corner_2 : vec2<f32>,
+    @location(5) corner_3 : vec2<f32>,
+    @location(6) corner_4 : vec2<f32>,
 };
 
 @vertex
@@ -20,6 +25,12 @@ fn vertex_main(
     output.fragUV = uv;
     output.draw_colors = draw_colors;
     output.rectUV = rect_uv;
+
+    output.corner_1 = vec2(0.0, 0.0);
+    output.corner_2 = vec2(0.0, 0.0);
+    output.corner_3 = vec2(0.0, 0.0);
+    output.corner_4 = vec2(0.0, 0.0);
+
     return output;
 }
 
@@ -36,6 +47,9 @@ fn dist(a: vec2<f32>, b: vec2<f32>) -> f32 {
     var c = a - b;
     return sqrt(c.x * c.x + c.y * c.y);
 }
+fn dist2(a: f32, b: f32) -> f32 {
+    return sqrt(a * a + b * b);
+}
 fn min4(a: f32, b: f32, c: f32, d: f32) -> f32 {
     return min(min(a, b), min(c, d));
 }
@@ -45,25 +59,46 @@ fn frag_main(
     @location(0) fragUV: vec2<f32>,
     @location(1) @interpolate(flat) draw_colors: u32,
     @location(2) rectUV : vec2<f32>,
+
+    @location(3) corner_1 : vec2<f32>,
+    @location(4) corner_2 : vec2<f32>,
+    @location(5) corner_3 : vec2<f32>,
+    @location(6) corner_4 : vec2<f32>,
 ) -> @location(0) vec4<f32> {
     var sample = textureSample(myTexture, mySampler, fragUV);
 
     // there's a rounded rectangle sdf but I don't know it
+
     var radius = f32(0.1);
     var rinv = 1.0 - radius;
-    var is_corner_1 = rectUV.x < radius && rectUV.y < radius;
-    var is_corner_2 = rectUV.x > rinv && rectUV.y < radius;
-    var is_corner_3 = rectUV.x < radius && rectUV.y > rinv;
-    var is_corner_4 = rectUV.x > rinv && rectUV.y > rinv;
+    var is_corner_1 = rectUV.x < corner_1.x && rectUV.y < corner_1.y;
+    var is_corner_2 = rectUV.x > (1.0 - corner_2.x) && rectUV.y < corner_2.y;
+    var is_corner_3 = rectUV.x < corner_3.x && rectUV.y > (1.0 - corner_3.y);
+    var is_corner_4 = rectUV.x > (1.0 - corner_4.x) && rectUV.y > (1.0 - corner_4.y);
     var is_corner = is_corner_1 || is_corner_2 || is_corner_3 || is_corner_4;
-    // oh we need to measure dist horizontal and vertical seperately
-    var corner_dist = min4(
-        dist(vec2<f32>(radius, radius), rectUV),
-        dist(vec2<f32>(rinv, radius), rectUV),
-        dist(vec2<f32>(radius, rinv), rectUV),
-        dist(vec2<f32>(rinv, rinv), rectUV),
+    var corner_1_dist = dist2(
+        (rectUV.x - corner_1.x) * (1.0 / corner_1.x), // x dist
+        (rectUV.y - corner_1.y) * (1.0 / corner_1.y), // y dist
     );
-    if(is_corner && corner_dist > radius) {
+    var corner_2_dist = dist2(
+        (rectUV.x - (1.0 - corner_2.x)) * (1.0 / corner_2.x), // x dist
+        (rectUV.y - corner_2.y) * (1.0 / corner_2.y), // y dist
+    );
+    var corner_3_dist = dist2(
+        (rectUV.x - corner_3.x) * (1.0 / corner_3.x), // x dist
+        (rectUV.y - (1.0 - corner_3.y)) * (1.0 / corner_3.y), // y dist
+    );
+    var corner_4_dist = dist2(
+        (rectUV.x - (1.0 - corner_4.x)) * (1.0 / corner_4.x), // x dist
+        (rectUV.y - (1.0 - corner_4.y)) * (1.0 / corner_4.y), // y dist
+    );
+    var corner_dist = min4(
+        corner_1_dist,
+        corner_2_dist,
+        corner_3_dist,
+        corner_4_dist,
+    );
+    if(is_corner && corner_dist > 1.0) {
         discard;
     }
 
