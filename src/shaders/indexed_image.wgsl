@@ -2,6 +2,7 @@ struct VertexOutput {
     @builtin(position) Position : vec4<f32>,
     @location(0) fragUV : vec2<f32>,
     @location(1) @interpolate(flat) draw_colors: u32,
+    @location(2) rectUV : vec2<f32>,
 };
 
 @vertex
@@ -9,6 +10,7 @@ fn vertex_main(
     @location(0) position : vec4<f32>,
     @location(1) uv : vec2<f32>,
     @location(2) draw_colors: u32,
+    @location(3) rect_uv : vec2<f32>,
 ) -> VertexOutput {
     var output: VertexOutput;
     // (0, 0) => (-1, 1)
@@ -17,6 +19,7 @@ fn vertex_main(
     output.Position = vec4(xy.x, 0.0 - xy.y, position.zw);
     output.fragUV = uv;
     output.draw_colors = draw_colors;
+    output.rectUV = rect_uv;
     return output;
 }
 
@@ -29,14 +32,40 @@ struct Uniforms { // %[Uniforms]
 @group(0) @binding(1) var mySampler: sampler;
 @group(0) @binding(2) var myTexture: texture_2d<f32>;
 
+fn dist(a: vec2<f32>, b: vec2<f32>) -> f32 {
+    var c = a - b;
+    return sqrt(c.x * c.x + c.y * c.y);
+}
+fn min4(a: f32, b: f32, c: f32, d: f32) -> f32 {
+    return min(min(a, b), min(c, d));
+}
+
 @fragment
 fn frag_main(
     @location(0) fragUV: vec2<f32>,
     @location(1) @interpolate(flat) draw_colors: u32,
+    @location(2) rectUV : vec2<f32>,
 ) -> @location(0) vec4<f32> {
-    // return textureSample(myTexture, mySampler, fragUV);
-
     var sample = textureSample(myTexture, mySampler, fragUV);
+
+    // there's a rounded rectangle sdf but I don't know it
+    var radius = f32(0.1);
+    var rinv = 1.0 - radius;
+    var is_corner_1 = rectUV.x < radius && rectUV.y < radius;
+    var is_corner_2 = rectUV.x > rinv && rectUV.y < radius;
+    var is_corner_3 = rectUV.x < radius && rectUV.y > rinv;
+    var is_corner_4 = rectUV.x > rinv && rectUV.y > rinv;
+    var is_corner = is_corner_1 || is_corner_2 || is_corner_3 || is_corner_4;
+    // oh we need to measure dist horizontal and vertical seperately
+    var corner_dist = min4(
+        dist(vec2<f32>(radius, radius), rectUV),
+        dist(vec2<f32>(rinv, radius), rectUV),
+        dist(vec2<f32>(radius, rinv), rectUV),
+        dist(vec2<f32>(rinv, rinv), rectUV),
+    );
+    if(is_corner && corner_dist > radius) {
+        discard;
+    }
 
     if(draw_colors <= 0x0FFFFFFF) {
         // 0=transparent,1=colors[0],2=colors[1],3=colors[2],4=colors[3],5=reserved,6=reserved,7=reserved

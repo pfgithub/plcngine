@@ -24,6 +24,7 @@ pub const Vertex = extern struct {
     pos: @Vector(4, f32),
     uv: @Vector(2, f32),
     draw_colors: u32,
+    rect_uv: @Vector(2, f32),
 };
 
 pub const App = @This();
@@ -79,6 +80,7 @@ pub fn init(app: *App) !void {
         .{ .format = .float32x4, .offset = @offsetOf(Vertex, "pos"), .shader_location = 0 },
         .{ .format = .float32x2, .offset = @offsetOf(Vertex, "uv"), .shader_location = 1 },
         .{ .format = .uint32, .offset = @offsetOf(Vertex, "draw_colors"), .shader_location = 2 },
+        .{ .format = .float32x2, .offset = @offsetOf(Vertex, "rect_uv"), .shader_location = 3 },
     };
     const vertex_buffer_layout = gpu.VertexBufferLayout.init(.{
         .array_stride = @sizeOf(Vertex),

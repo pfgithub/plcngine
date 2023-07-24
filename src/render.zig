@@ -36,13 +36,13 @@ pub fn vertexRect(
     const draw_colors = opts.draw_colors;
 
     return [6]App.Vertex{
-        .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .draw_colors = draw_colors },
-        .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 }, .draw_colors = draw_colors },
-        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .draw_colors = draw_colors },
+        .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .rect_uv = .{ 0, 0 }, .draw_colors = draw_colors },
+        .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 }, .draw_colors = draw_colors },
+        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 }, .draw_colors = draw_colors },
 
-        .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .draw_colors = draw_colors },
-        .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .draw_colors = draw_colors },
-        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .draw_colors = draw_colors },
+        .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 }, .draw_colors = draw_colors },
+        .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .rect_uv = .{ 1, 1 }, .draw_colors = draw_colors },
+        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 }, .draw_colors = draw_colors },
     };
 }
 
@@ -174,7 +174,7 @@ pub const Render = struct {
 
         try vertices.appendSlice(&vertexRect(.{
             .ul = .{10, 10},
-            .br = .{90, 90},
+            .br = .{90, 190},
             .draw_colors = 0x2,
         }));
 
