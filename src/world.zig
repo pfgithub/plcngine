@@ -19,7 +19,7 @@ pub const Chunk = struct {
     chunk_render_info: render.ChunkRenderInfo = .{},
     last_updated: u64 = 1,
     last_used: u64 = 0,
-    last_saved: u64 = 0,
+    last_saved: u64 = 1, // don't save blank chunks
 
     pub fn deinit(chunk: *Chunk) void {
         chunk.chunk_render_info.deinit();
