@@ -16,6 +16,11 @@ fn vertex_main(
     @location(1) uv : vec2<f32>,
     @location(2) draw_colors: u32,
     @location(3) rect_uv : vec2<f32>,
+
+    @location(4) corner_1: vec2<f32>,
+    @location(5) corner_2: vec2<f32>,
+    @location(6) corner_3: vec2<f32>,
+    @location(7) corner_4: vec2<f32>,
 ) -> VertexOutput {
     var output: VertexOutput;
     // (0, 0) => (-1, 1)
@@ -26,10 +31,10 @@ fn vertex_main(
     output.draw_colors = draw_colors;
     output.rectUV = rect_uv;
 
-    output.corner_1 = vec2(0.0, 0.0);
-    output.corner_2 = vec2(0.0, 0.0);
-    output.corner_3 = vec2(0.0, 0.0);
-    output.corner_4 = vec2(0.0, 0.0);
+    output.corner_1 = corner_1;
+    output.corner_2 = corner_2;
+    output.corner_3 = corner_3;
+    output.corner_4 = corner_4;
 
     return output;
 }

@@ -25,6 +25,10 @@ pub const RectOpts = struct {
     bl: ?Vec2f32 = null,
     br: Vec2f32,
     draw_colors: u32, // octal literal
+    border_radius_ul: f32 = 0.0,
+    border_radius_ur: f32 = 0.0,
+    border_radius_bl: f32 = 0.0,
+    border_radius_br: f32 = 0.0,
 };
 pub fn vertexRect(
     opts: RectOpts,
@@ -35,14 +39,21 @@ pub fn vertexRect(
     const br = opts.br;
     const draw_colors = opts.draw_colors;
 
-    return [6]App.Vertex{
-        .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .rect_uv = .{ 0, 0 }, .draw_colors = draw_colors },
-        .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 }, .draw_colors = draw_colors },
-        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 }, .draw_colors = draw_colors },
+    const hy = br[y] - ul[y];
+    const hx = br[x] - ul[x];
+    const corner_1 = Vec2f32{opts.border_radius_ul / hx, opts.border_radius_ul / hy};
+    const corner_2 = Vec2f32{opts.border_radius_ur / hx, opts.border_radius_ur / hy};
+    const corner_3 = Vec2f32{opts.border_radius_bl / hx, opts.border_radius_bl / hy};
+    const corner_4 = Vec2f32{opts.border_radius_br / hx, opts.border_radius_br / hy};
 
-        .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 }, .draw_colors = draw_colors },
-        .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .rect_uv = .{ 1, 1 }, .draw_colors = draw_colors },
-        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 }, .draw_colors = draw_colors },
+    return [6]App.Vertex{
+        .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .rect_uv = .{ 0, 0 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
+        .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
+        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
+
+        .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
+        .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .rect_uv = .{ 1, 1 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
+        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
     };
 }
 
@@ -176,6 +187,10 @@ pub const Render = struct {
             .ul = .{10, 10},
             .br = .{90, 190},
             .draw_colors = 0x2,
+            .border_radius_ul = 5.0,
+            .border_radius_ur = 5.0,
+            .border_radius_bl = 5.0,
+            .border_radius_br = 5.0,
         }));
 
         if(render.ui_texture == null) {
