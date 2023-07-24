@@ -395,11 +395,11 @@ pub fn update(app: *App) !bool {
         .color_attachments = &.{color_attachment},
     });
 
-    try app.render.prepareWorld(encoder);
+    try app.render.prepareApp(encoder);
 
     const pass: *gpu.RenderPassEncoder = encoder.beginRenderPass(&render_pass_info);
     pass.setPipeline(app.pipeline);
-    try app.render.renderWorld(pass);
+    try app.render.renderApp(pass);
     pass.end();
     pass.release();
 
