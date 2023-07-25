@@ -30,6 +30,11 @@ pub const Vertex = extern struct {
     corner_2: @Vector(2, f32),
     corner_3: @Vector(2, f32),
     corner_4: @Vector(2, f32),
+
+    border_t: f32,
+    border_r: f32,
+    border_b: f32,
+    border_l: f32,
 };
 
 pub const App = @This();
@@ -91,6 +96,11 @@ pub fn init(app: *App) !void {
         .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_2"), .shader_location = 5 },
         .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_3"), .shader_location = 6 },
         .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_4"), .shader_location = 7 },
+
+        .{ .format = .float32, .offset = @offsetOf(Vertex, "border_t"), .shader_location = 8 },
+        .{ .format = .float32, .offset = @offsetOf(Vertex, "border_r"), .shader_location = 9 },
+        .{ .format = .float32, .offset = @offsetOf(Vertex, "border_b"), .shader_location = 10 },
+        .{ .format = .float32, .offset = @offsetOf(Vertex, "border_l"), .shader_location = 11 },
     };
     const vertex_buffer_layout = gpu.VertexBufferLayout.init(.{
         .array_stride = @sizeOf(Vertex),

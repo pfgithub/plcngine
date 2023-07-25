@@ -8,6 +8,11 @@ struct VertexOutput {
     @location(4) corner_2 : vec2<f32>,
     @location(5) corner_3 : vec2<f32>,
     @location(6) corner_4 : vec2<f32>,
+
+    @location(7) border_t: f32,
+    @location(8) border_r: f32,
+    @location(9) border_b: f32,
+    @location(10) border_l: f32,
 };
 
 @vertex
@@ -21,6 +26,11 @@ fn vertex_main(
     @location(5) corner_2: vec2<f32>,
     @location(6) corner_3: vec2<f32>,
     @location(7) corner_4: vec2<f32>,
+
+    @location(8) border_t: f32,
+    @location(9) border_r: f32,
+    @location(10) border_b: f32,
+    @location(11) border_l: f32,
 ) -> VertexOutput {
     var output: VertexOutput;
     // (0, 0) => (-1, 1)
@@ -35,6 +45,11 @@ fn vertex_main(
     output.corner_2 = corner_2;
     output.corner_3 = corner_3;
     output.corner_4 = corner_4;
+
+    output.border_t = border_t;
+    output.border_r = border_r;
+    output.border_b = border_b;
+    output.border_l = border_l;
 
     return output;
 }
@@ -61,41 +76,46 @@ fn min4(a: f32, b: f32, c: f32, d: f32) -> f32 {
 
 @fragment
 fn frag_main(
-    @location(0) fragUV: vec2<f32>,
+    @location(0) frag_uv: vec2<f32>,
     @location(1) @interpolate(flat) draw_colors: u32,
-    @location(2) rectUV : vec2<f32>,
+    @location(2) rect_uv : vec2<f32>,
 
     @location(3) corner_1 : vec2<f32>,
     @location(4) corner_2 : vec2<f32>,
     @location(5) corner_3 : vec2<f32>,
     @location(6) corner_4 : vec2<f32>,
+
+    @location(7) border_t: f32,
+    @location(8) border_r: f32,
+    @location(9) border_b: f32,
+    @location(10) border_l: f32,
 ) -> @location(0) vec4<f32> {
-    var sample = textureSample(myTexture, mySampler, fragUV);
+    var sample = textureSample(myTexture, mySampler, frag_uv);
 
     // there's a rounded rectangle sdf but I don't know it
 
     var radius = f32(0.1);
     var rinv = 1.0 - radius;
-    var is_corner_1 = rectUV.x < corner_1.x && rectUV.y < corner_1.y;
-    var is_corner_2 = rectUV.x > (1.0 - corner_2.x) && rectUV.y < corner_2.y;
-    var is_corner_3 = rectUV.x < corner_3.x && rectUV.y > (1.0 - corner_3.y);
-    var is_corner_4 = rectUV.x > (1.0 - corner_4.x) && rectUV.y > (1.0 - corner_4.y);
+    var is_corner_1 = rect_uv.x < corner_1.x && rect_uv.y < corner_1.y;
+    var is_corner_2 = rect_uv.x > (1.0 - corner_2.x) && rect_uv.y < corner_2.y;
+    var is_corner_3 = rect_uv.x < corner_3.x && rect_uv.y > (1.0 - corner_3.y);
+    var is_corner_4 = rect_uv.x > (1.0 - corner_4.x) && rect_uv.y > (1.0 - corner_4.y);
     var is_corner = is_corner_1 || is_corner_2 || is_corner_3 || is_corner_4;
     var corner_1_dist = dist2(
-        (rectUV.x - corner_1.x) * (1.0 / corner_1.x), // x dist
-        (rectUV.y - corner_1.y) * (1.0 / corner_1.y), // y dist
+        (rect_uv.x - corner_1.x) * (1.0 / corner_1.x), // x dist
+        (rect_uv.y - corner_1.y) * (1.0 / corner_1.y), // y dist
     );
     var corner_2_dist = dist2(
-        (rectUV.x - (1.0 - corner_2.x)) * (1.0 / corner_2.x), // x dist
-        (rectUV.y - corner_2.y) * (1.0 / corner_2.y), // y dist
+        (rect_uv.x - (1.0 - corner_2.x)) * (1.0 / corner_2.x), // x dist
+        (rect_uv.y - corner_2.y) * (1.0 / corner_2.y), // y dist
     );
     var corner_3_dist = dist2(
-        (rectUV.x - corner_3.x) * (1.0 / corner_3.x), // x dist
-        (rectUV.y - (1.0 - corner_3.y)) * (1.0 / corner_3.y), // y dist
+        (rect_uv.x - corner_3.x) * (1.0 / corner_3.x), // x dist
+        (rect_uv.y - (1.0 - corner_3.y)) * (1.0 / corner_3.y), // y dist
     );
     var corner_4_dist = dist2(
-        (rectUV.x - (1.0 - corner_4.x)) * (1.0 / corner_4.x), // x dist
-        (rectUV.y - (1.0 - corner_4.y)) * (1.0 / corner_4.y), // y dist
+        (rect_uv.x - (1.0 - corner_4.x)) * (1.0 / corner_4.x), // x dist
+        (rect_uv.y - (1.0 - corner_4.y)) * (1.0 / corner_4.y), // y dist
     );
     var corner_dist = min4(
         corner_1_dist,
@@ -105,6 +125,23 @@ fn frag_main(
     );
     if(is_corner && corner_dist > 1.0) {
         discard;
+    }
+
+    var border_t_dist = rect_uv.y - border_t;
+    var border_r_dist = (1.0 - rect_uv.x) - border_r;
+    var border_b_dist = (1.0 - rect_uv.y) - border_b;
+    var border_l_dist = rect_uv.x - border_l;
+    if(border_t_dist < 0) {
+        sample = vec4(1.1 / 255.0, 0.0, 0.0, 1.0);
+    }
+    if(border_r_dist < 0) {
+        sample = vec4(2.1 / 255.0, 0.0, 0.0, 1.0);
+    }
+    if(border_b_dist < 0) {
+        sample = vec4(3.1 / 255.0, 0.0, 0.0, 1.0);
+    }
+    if(border_l_dist < 0) {
+        sample = vec4(4.1 / 255.0, 0.0, 0.0, 1.0);
     }
 
     if(draw_colors <= 0x0FFFFFFF) {

@@ -30,6 +30,11 @@ pub const RectOpts = struct {
     border_radius_ur: ?f32 = null,
     border_radius_bl: ?f32 = null,
     border_radius_br: ?f32 = null,
+    border: f32 = 0.0,
+    border_t: ?f32 = null,
+    border_r: ?f32 = null,
+    border_b: ?f32 = null,
+    border_l: ?f32 = null,
 };
 pub fn vertexRect(
     opts: RectOpts,
@@ -52,14 +57,49 @@ pub fn vertexRect(
     const corner_3 = Vec2f32{border_radius_bl / hx, border_radius_bl / hy};
     const corner_4 = Vec2f32{border_radius_br / hx, border_radius_br / hy};
 
-    return [6]App.Vertex{
-        .{ .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .rect_uv = .{ 0, 0 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
-        .{ .pos = .{ bl[x], br[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
-        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
+    const border_t: f32 = (opts.border_t orelse opts.border) / hy;
+    const border_r: f32 = (opts.border_r orelse opts.border) / hx;
+    const border_b: f32 = (opts.border_b orelse opts.border) / hy;
+    const border_l: f32 = (opts.border_l orelse opts.border) / hx;
 
-        .{ .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
-        .{ .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .rect_uv = .{ 1, 1 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
-        .{ .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 }, .draw_colors = draw_colors, .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4 },
+    return [6]App.Vertex{
+        .{
+            .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .rect_uv = .{ 0, 0 },
+            .draw_colors = draw_colors,
+            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
+            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
+        },
+        .{
+            .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 },
+            .draw_colors = draw_colors,
+            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
+            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
+        },
+        .{
+            .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 },
+            .draw_colors = draw_colors,
+            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
+            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
+        },
+
+        .{
+            .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 },
+            .draw_colors = draw_colors,
+            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
+            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
+        },
+        .{
+            .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .rect_uv = .{ 1, 1 },
+            .draw_colors = draw_colors,
+            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
+            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
+        },
+        .{
+            .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 },
+            .draw_colors = draw_colors,
+            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
+            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
+        },
     };
 }
 
@@ -192,14 +232,9 @@ pub const Render = struct {
         try vertices.appendSlice(&vertexRect(.{
             .ul = .{10, 10},
             .br = .{90, 190},
-            .draw_colors = 0x3,
-            .border_radius = 7.0,
-        }));
-        try vertices.appendSlice(&vertexRect(.{
-            .ul = .{10 + 2, 10 + 2},
-            .br = .{90 - 2, 190 - 2},
-            .draw_colors = 0x2,
-            .border_radius = 5.0,
+            .draw_colors = 0o33332,
+            .border_radius = 10.0,
+            .border = 2.0,
         }));
 
         if(render.ui_texture == null) {
