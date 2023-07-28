@@ -1,3 +1,5 @@
+// https://github.com/warpdotdev/samples/blob/main/how-to-draw-rectangles-using-gpu.metal
+
 struct VertexOutput {
     @builtin(position) Position : vec4<f32>,
     @location(0) fragUV : vec2<f32>,
@@ -155,7 +157,9 @@ fn frag_main(
         return uniforms.colors[shiftres - 1];
     }else{
         return sample;
-    }
+    } // } else if(draw_colors == 0x10000000) {
+    // sample msdf
+    // }
 }
 
 // v can't use this, we need supersampling
