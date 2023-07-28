@@ -445,9 +445,10 @@ pub fn update(app: *App) !bool {
     app.core.device().tick();
 
     app.frc.onFrame();
-    var buf: [64]u8 = undefined;
-    const title = try std.fmt.bufPrintZ(&buf, "plcngine [ FPS: {d:.2} ]", .{ app.frc.getFramerate() });
-    app.core.setTitle(title);
+    // var buf: [64]u8 = undefined;
+    // const title = try std.fmt.bufPrintZ(&buf, "plcngine [ FPS: {d:.2} ]", .{ app.frc.getFramerate() });
+    // app.core.setTitle(title);
+    // setTitle memory mut last until the main thread accepts the updated title. so uuh?
 
     return false;
 }
