@@ -131,16 +131,16 @@ fn frag_main(
     var border_r_dist = (1.0 - rect_uv.x) - border_r;
     var border_b_dist = (1.0 - rect_uv.y) - border_b;
     var border_l_dist = rect_uv.x - border_l;
-    if(border_t_dist < 0) {
+    if(border_t_dist < 0 && border_t > 0) {
         sample = vec4(1.1 / 255.0, 0.0, 0.0, 1.0);
     }
-    if(border_r_dist < 0) {
+    if(border_r_dist < 0 && border_r > 0) {
         sample = vec4(2.1 / 255.0, 0.0, 0.0, 1.0);
     }
-    if(border_b_dist < 0) {
+    if(border_b_dist < 0 && border_b > 0) {
         sample = vec4(3.1 / 255.0, 0.0, 0.0, 1.0);
     }
-    if(border_l_dist < 0) {
+    if(border_l_dist < 0 && border_l > 0) {
         sample = vec4(4.1 / 255.0, 0.0, 0.0, 1.0);
     }
 
