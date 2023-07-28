@@ -165,16 +165,16 @@ pub const Render = struct {
 
     pub fn screenToWorldPos(render: *Render, screen_pos: Vec2f32) Vec2f32 {
         const wso2 = render.halfScreen();
-        const scale = @splat(2, render.center_scale);
+        const scale: Vec2f32 = @splat(render.center_scale);
         return (screen_pos - wso2) / scale + render.center_offset;
     }
     pub fn worldPosToScreenPos(render: *Render, world_pos: Vec2i) Vec2f32 {
         const wso2 = render.halfScreen();
-        const scale = @splat(2, render.center_scale);
+        const scale: Vec2f32 = @splat(render.center_scale);
         return (vi2f(world_pos) - render.center_offset) * scale + wso2;
     }
     pub fn halfScreen(render: *Render) Vec2f32 {
-        return render.window_size / @splat(2, @as(f32, 2.0));
+        return render.window_size / @as(Vec2f32, @splat(2.0));
     }
 
     fn screenChunkBounds(render: *Render) [2]Vec2i {
@@ -196,7 +196,7 @@ pub const Render = struct {
             @floatFromInt( (col & 0x00FF0000) >> 16 ),
             @floatFromInt( (col & 0x0000FF00) >> 8 ),
             @floatFromInt( (col & 0x000000FF) >> 0 ),
-        } / @splat(4, @as(f32, 255.0));
+        } / @as(@Vector(4, f32), @splat(255.0));
     }
 
     pub fn prepareApp(render: *Render,

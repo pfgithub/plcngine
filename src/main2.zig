@@ -320,17 +320,17 @@ const Controller = struct {
             render.center_offset -= mpos_after - mpos_before;
             if(render.center_scale == 1.0) render.center_offset = @round(render.center_offset);
         }else if(ih.keys_held.get(.left_shift) or ih.keys_held.get(.right_shift)) {
-            render.center_offset -= Vec2f32{mwheel_ray[0] + mwheel_ray[1], 0} / @splat(2, render.center_scale);
+            render.center_offset -= Vec2f32{mwheel_ray[0] + mwheel_ray[1], 0} / @as(Vec2f32, @splat(render.center_scale));
         }else{
-            render.center_offset -= mwheel_ray / @splat(2, render.center_scale);
+            render.center_offset -= mwheel_ray / @as(Vec2f32, @splat(render.center_scale));
         }
         if(ih.isCursorHidden()) {
             const mmove_vec = ih.frame.mouse_delta;
 
-            render.center_offset += mmove_vec / @splat(2, render.center_scale);
+            render.center_offset += mmove_vec / @as(Vec2f32, @splat(render.center_scale));
         }
         if(ih.mouse_held.get(.middle) or (ih.mouse_held.get(.left) and ih.modsEql(.{.alt = true}))) {
-            render.center_offset -= ih.frame.mouse_delta / @splat(2, render.center_scale);
+            render.center_offset -= ih.frame.mouse_delta / @as(Vec2f32, @splat(render.center_scale));
         }
 
 
