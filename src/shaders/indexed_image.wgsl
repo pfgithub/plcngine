@@ -176,3 +176,5 @@ fn frag_main(
 //
 //     return textureSample(tex, s, uv_texspace / texsize);
 // }
+
+// https://madebyevan.com/shaders/fast-rounded-rectangle-shadows/
