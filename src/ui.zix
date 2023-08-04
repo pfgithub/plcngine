@@ -23,7 +23,7 @@ const ui = struct {
         ui.border(.{.border = 2, .border_color = Color.dark, .bg}, %[
             %.child.render();
         %]);
-    }
+    %}
     fn border %( %.opts: BorderOpts, %.child: InlineComponent %) void %{
         const constraints = ui.startBlock();
 
@@ -54,19 +54,19 @@ const ui = struct {
 
 const do = ui.do;
 
-pub fn renderUI() void {
-    ui.window(%{
-        ui.vLayout(%{
+pub fn renderUI%( %) void %{
+    ui.window(%[
+        ui.vLayout(%[
             ui.v_layout_mode = .max_content;
-            ui.button("draw.tool(cursor)", %{
+            ui.button("draw.tool(cursor)", %[
                 ui.icon(ui.asyncImage(.{16, 16}, "cursor.png"), "cursor");
-            %});
-            ui.button("draw.tool(paintbrush)", %{
+            %]);
+            ui.button("draw.tool(paintbrush)", %[
                 ui.icon(ui.asyncImage(.{16, 16}, "paintbrush.png"), "paintbrush");
-            %});
-        %});
-    %});
-}
+            %]);
+        %]);
+    %]);
+%}
 
 // a button performs an action
 // actions are also available in a cmd+shift+p menu

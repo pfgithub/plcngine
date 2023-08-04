@@ -5,15 +5,10 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    //const exe = b.addExecutable(.{
-    //    .name = "plcngine",
-    //    .root_source_file = .{ .path = "src/main.zig" },
-    //    .target = target,
-    //    .optimize = optimize,
-    //});
-    //exe.linkLibC();
-    //exe.linkSystemLibrary("raylib");
-    //b.installArtifact(exe);
+    const codegen_step = std.build.Step.Run.create(b, "codegen zix");
+    codegen_step.addArgs(&.{
+        "bun", "src/zix_compiler.ts", "src",
+    });
 
     const app = try mach.App.init(b, .{
         .name = "plcngine",
@@ -28,6 +23,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     try app.link(.{});
+    app.compile.step.dependOn(&codegen_step.step);
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&app.run.step);

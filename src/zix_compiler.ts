@@ -34,8 +34,8 @@ class Tokenizer {
     this.srcloc += msg.length;
     return true;
   }
-  error(msg: string): never {
-    throw new PositionedError("tkz", msg, this.srcloc, new TextEncoder().encode(this.source));
+  error(msg: string, srcloc: number | null = null): never {
+    throw new PositionedError("tkz", msg, srcloc ?? this.srcloc, new TextEncoder().encode(this.source));
   }
   eof(): boolean {
     return this.srcloc >= this.source.length;
@@ -71,6 +71,7 @@ function compileZix(source: Tokenizer, emit: string[]) {
   let state: TkzState = "fn_or_root";
   let args_tmp: null | string[] = null;
   let ids: number[] = [];
+  let id_srclocs = new Map<number, number>();
   while(!source.eof()) {
     emit.push(source.readUntil("%"));
     if(source.eof()) break;
@@ -103,6 +104,7 @@ function compileZix(source: Tokenizer, emit: string[]) {
       if(state !== "args_end") source.error("bad state");
       state = "fn_or_root";
       const id = gid++;
+      id_srclocs.set(id, source.srcloc);
       ids.push(id);
       emit.push("{");
       if(args_tmp == null) source.error("args_tmp equals null");
@@ -117,6 +119,7 @@ function compileZix(source: Tokenizer, emit: string[]) {
       const parent_id = ids[ids.length - 1];
       if(parent_id == null) source.error("parent_id is null");
       const id = gid++;
+      id_srclocs.set(id, source.srcloc);
       ids.push(id);
       emit.push("ui.callback(&"+names.state(parent_id)+", ");
       emit.push("struct{fn "+names.fn(id)+"("+names.state(id)+": anytype) void {");
@@ -128,6 +131,13 @@ function compileZix(source: Tokenizer, emit: string[]) {
       source.error("percent nothing");
     }
   }
+
+  if(ids.length !== 0) {
+    for(const id of ids) {
+      const srcloc = id_srclocs.get(id) ?? null;
+      source.error("missing close bracket for this open bracket", srcloc);
+    }
+  }
 }
 
 function indent(level: number): string {
@@ -136,18 +146,25 @@ function indent(level: number): string {
 type Stats = {
   files_processed: number,
 };
-async function compileObject(dirname: string, filename_unprefixed: string, indent_level: number, stats: Stats): Promise<void> {
+async function compileObject(dirname: string, filename_unprefixed: string, indent_level: number, stats: Stats, beforeprint_parent: () => void): Promise<void> {
   const filename = dirname + "/" + filename_unprefixed;
   const file_stat = statSync(filename);
   if(filename_unprefixed.startsWith(".")) return;
   if(file_stat.isDirectory()) {
-    process.stderr.write(indent(indent_level) + filename + "\n");
-    await compileDirRecursive(filename, indent_level, stats);
+    let written = false;
+    const beforeuse = () => {
+      if(written) return;
+      written = true;
+      beforeprint_parent();
+      process.stderr.write(indent(indent_level) + filename_unprefixed + "/\n");
+    };
+    await compileDirRecursive(filename, indent_level, stats, beforeuse);
     return;
   }
   if(!filename_unprefixed.endsWith(".zix")) return;
 
-  process.stderr.write(indent(indent_level) + filename + "\n");
+  beforeprint_parent();
+  process.stderr.write(indent(indent_level) + filename_unprefixed + "\n");
 
   const out_filename = filename + ".zig";
   const content: string = await Bun.file(filename).text();
@@ -162,10 +179,10 @@ async function compileObject(dirname: string, filename_unprefixed: string, inden
 
   stats.files_processed += 1;
 }
-async function compileDirRecursive(dirname: string, indent_level: number, stats: Stats): Promise<void> {
+async function compileDirRecursive(dirname: string, indent_level: number, stats: Stats, beforeprint_parent: () => void): Promise<void> {
   const dircont = readdirSync(dirname);
   for(const filename_unprefixed of dircont) {
-    await compileObject(dirname, filename_unprefixed, indent_level, stats);
+    await compileObject(dirname, filename_unprefixed, indent_level + 1, stats, beforeprint_parent);
   }
 }
 
@@ -181,7 +198,7 @@ for(const arg of args) {
   };
   const time_start = Date.now();
   const split = path.parse(arg);
-  await compileObject(split.dir || ".", split.base, 0, stats);
+  await compileObject(split.dir || ".", split.base, 0, stats, () => {});
   const time_end = Date.now();
   const ms_fmt = Intl.DurationFormat != null ? new Intl.DurationFormat(undefined, {style: "narrow"}).format({
     milliseconds: time_end - time_start,
