@@ -83,17 +83,17 @@ function compileZix(source: Tokenizer, emit: string[]) {
       state = "args_end";
       emit.push(")");
     }else if(source.readIf("%.")) {
+      const res = source.readRegex(/[a-zA-Z0-9_]*/y);
+      if(res == null || res[0] === "") {
+        source.error("expected /[a-zA-Z0-9_]*/");
+      }
+      const resname = res[0];
       if(state === "fn_or_root") {
         let cid = ids[ids.length - 1];
         if(cid == null) source.error("not in cid context");
-        emit.push(names.state(cid) + ".");
+        emit.push(names.state(cid) + "." + resname + ".*");
       }else if(state === "args") {
         if(args_tmp == null) source.error("args_tmp equals null");
-        const res = source.readRegex(/[a-zA-Z0-9_]*/y);
-        if(res == null || res[0] === "") {
-          source.error("expected /[a-zA-Z0-9_]*/");
-        }
-        const resname = res[0];
         emit.push(resname);
         args_tmp.push(resname);
       }else source.error("not in args or fn_or_root context");
@@ -104,7 +104,7 @@ function compileZix(source: Tokenizer, emit: string[]) {
       ids.push(id);
       emit.push("{");
       if(args_tmp == null) source.error("args_tmp equals null");
-      emit.push("const "+names.state(id)+" = .{"+args_tmp.map(at => "." + at + " = " + at).join(", ")+"};");
+      emit.push("const "+names.state(id)+" = .{"+args_tmp.map(at => "." + at + " = &" + at).join(", ")+"};");
       args_tmp = null;
     }else if(source.readIf("%}")) {
       if(state !== "fn_or_root") source.error("bad state");
