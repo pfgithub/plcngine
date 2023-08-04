@@ -121,7 +121,7 @@ function compileZix(source: Tokenizer, emit: string[]) {
       const id = gid++;
       id_srclocs.set(id, source.srcloc);
       ids.push(id);
-      emit.push("ui.callback(&"+names.state(parent_id)+", ");
+      emit.push("ui.callback(@src(), &"+names.state(parent_id)+", ");
       emit.push("struct{fn "+names.fn(id)+"("+names.state(id)+": anytype) void {");
     }else if(source.readIf("%]")) {
       const sid = ids.pop();
