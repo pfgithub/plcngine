@@ -19,7 +19,7 @@ const ui = struct {
     };
     var ui_instance = ui{};
 
-    fn window %( %.child: InlineComponent %) void { %:{
+    fn window %( %.child: InlineComponent %) void %{
         ui.border(.{.border = 2, .border_color = Color.dark, .bg}, %[
             %.child.render();
         %]);
