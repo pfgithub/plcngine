@@ -57,17 +57,22 @@ export function displayErrorLocation(fylnm: string, inbytes: Uint8Array, e: Posi
     console.log("");
 }
 
+export function prettyDisplayError(filename: string, e: unknown): never {
+    if(e instanceof PositionedError) {
+        displayErrorLocation(filename, e.srctxt, e);
+        process.exit(1);
+        // throw e;
+    }else{
+        console.log("in file: "+filename);
+        throw e;
+    }
+}
+
 export function prettyErrorHandle<T>(flnme: string, v: () => T): T {
     try {
         return v();
     }catch(e) {
-        if(e instanceof PositionedError) {
-            displayErrorLocation(flnme, e.srctxt, e);
-            process.exit(1);
-            // throw e;
-        }else{
-            throw e;
-        }
+        prettyDisplayError(flnme, e);
     }
 }
 

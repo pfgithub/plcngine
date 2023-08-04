@@ -2,7 +2,9 @@
 // that way strings like "%(hello%)" won't be messed up & identifiers like '%.@"hello"'
 // will be supported.
 
-import { PositionedError, prettyErrorHandle } from "./pretty_error";
+import {readdirSync, statSync} from "fs";
+import * as path from "path";
+import { PositionedError, prettyDisplayError, prettyErrorHandle } from "./pretty_error";
 function assert(cond: boolean): void {
   if(!cond) throw new Error("never");
 }
@@ -110,6 +112,7 @@ function compileZix(source: Tokenizer, emit: string[]) {
       if(state !== "fn_or_root") source.error("bad state");
       emit.push("}");
       assert(ids.pop() != null);
+    // %| a b c %| to pass args to %[ %] ?
     }else if(source.readIf("%[")) {
       const parent_id = ids[ids.length - 1];
       if(parent_id == null) source.error("parent_id is null");
@@ -127,14 +130,73 @@ function compileZix(source: Tokenizer, emit: string[]) {
   }
 }
 
-prettyErrorHandle("a.zix", () => {
-  let out: string[] = [];
-  compileZix(new Tokenizer(`
-    fn Button%( %.item_one: []const u8, %.item_two: usize %) void %{
-      VStack(%[
-        std.log.info("value is: {d}, str: \"{s}\"", .{%.item_two, %.item_one});
-      %]);
-    %}
-  `), out);
-  console.log(out.join(""));
-});
+function indent(level: number): string {
+  return "  ".repeat(level);
+}
+type Stats = {
+  files_processed: number,
+};
+async function compileObject(dirname: string, filename_unprefixed: string, indent_level: number, stats: Stats): Promise<void> {
+  const filename = dirname + "/" + filename_unprefixed;
+  const file_stat = statSync(filename);
+  if(filename_unprefixed.startsWith(".")) return;
+  if(file_stat.isDirectory()) {
+    process.stderr.write(indent(indent_level) + filename + "\n");
+    await compileDirRecursive(filename, indent_level, stats);
+    return;
+  }
+  if(!filename_unprefixed.endsWith(".zix")) return;
+
+  process.stderr.write(indent(indent_level) + filename + "\n");
+
+  const out_filename = filename + ".zig";
+  const content: string = await Bun.file(filename).text();
+  try{
+    let out: string[] = [];
+    compileZix(new Tokenizer(content), out);
+    const compiled = out.join("");
+    await Bun.write(out_filename, compiled);
+  }catch(e) {
+    prettyDisplayError(filename, e);
+  }
+
+  stats.files_processed += 1;
+}
+async function compileDirRecursive(dirname: string, indent_level: number, stats: Stats): Promise<void> {
+  const dircont = readdirSync(dirname);
+  for(const filename_unprefixed of dircont) {
+    await compileObject(dirname, filename_unprefixed, indent_level, stats);
+  }
+}
+
+const args = Bun.argv.slice(2);
+for(const arg of args) {
+  if(arg.startsWith("-")) {
+    console.error("unsupported flag: "+arg);
+    process.stderr.write("usage: zix_compiler [files/directories...]\n");
+    process.exit(1);
+  }
+  const stats: Stats = {
+    files_processed: 0,
+  };
+  const time_start = Date.now();
+  const split = path.parse(arg);
+  await compileObject(split.dir || ".", split.base, 0, stats);
+  const time_end = Date.now();
+  const ms_fmt = Intl.DurationFormat != null ? new Intl.DurationFormat(undefined, {style: "narrow"}).format({
+    milliseconds: time_end - time_start,
+  }) : ((time_end - time_start) / 1000).toFixed(2) + "s";
+  console.log("" + stats.files_processed.toLocaleString() + " files processed in " + ms_fmt);
+}
+
+// prettyErrorHandle("a.zix", () => {
+//   let out: string[] = [];
+//   compileZix(new Tokenizer(`
+//     fn Button%( %.item_one: []const u8, %.item_two: usize %) void %{
+//       VStack(%[
+//         std.log.info("value is: {d}, str: \"{s}\"", .{%.item_two, %.item_one});
+//       %]);
+//     %}
+//   `), out);
+//   console.log(out.join(""));
+// });
