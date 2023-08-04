@@ -131,9 +131,8 @@ prettyErrorHandle("a.zix", () => {
   let out: string[] = [];
   compileZix(new Tokenizer(`
     fn Button%( %.item_one: []const u8, %.item_two: usize %) void %{
-      std.log.info("value is: {d}, str: \"{s}\"", .{%.item_two, %.item_one});
       VStack(%[
-        Button();
+        std.log.info("value is: {d}, str: \"{s}\"", .{%.item_two, %.item_one});
       %]);
     %}
   `), out);
