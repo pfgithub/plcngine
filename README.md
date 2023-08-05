@@ -1,7 +1,23 @@
 > early development
 
 ```
-git submodule update --init --recursive
+zig build run
+# (fix package if necessary)
+zig bulid run
+```
+
+fix package:
+
+```
+cd ~/.cache/zig/p/12205138bd6276b716921d78586aa272d11dc9e848086fb9cb56f41f6be7869b466e
+nvim build.zig
+---
+const std = @import("std");
+
+pub fn build(b: *std.Build) !void {
+    _ = b;
+}
+---
 ```
 
 plcngine:
@@ -23,4 +39,4 @@ notes:
 todo:
 
 - [x] build msdfgen ext/import-font.cpp (mach provides freetype)
-- [ ] move all libs from submodules to package manager
+- [x] move all libs from submodules to package manager

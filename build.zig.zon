@@ -2,6 +2,10 @@
     .name = "plcngine",
     .version = "0.0.1",
     .dependencies = .{
+        .msdfgen = .{
+            .url = "https://github.com/Chlumsky/msdfgen/archive/052f5fffd78066fbd276504cfc099cca006274b5.tar.gz",
+            .hash = "12205138bd6276b716921d78586aa272d11dc9e848086fb9cb56f41f6be7869b466e",
+        },
         .mach = .{
             .url = "https://pkg.machengine.org/mach/22528fafd23bd03374c4d2c11d73380a89dd2750.tar.gz",
             .hash = "12202783452441ba314b51cab0d626ef4529e2e27f1efb4eba1cb9d485508f0fbbc0",

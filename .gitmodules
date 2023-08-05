@@ -1,6 +1,3 @@
-[submodule "libs/zigimg"]
-	path = libs/zigimg
-	url = https://github.com/slimsag/zigimg
 [submodule "libs/msdfgen"]
 	path = libs/msdfgen
 	url = https://github.com/Chlumsky/msdfgen
