@@ -11,7 +11,15 @@ const Color = union(enum) {
 };
 
 const ui = struct {};
+const Constraints = struct {
+    w: ?i32,
+    h: ?i32,
+};
 
+// startBlock, endBlock is odd. do we want it?
+
+
+// fills the space provided to it
 pub fn Rect %( %.color: Color, %.children: ui.Component %) !void %{
     const constraints = ui.startBlock();
 
@@ -20,8 +28,18 @@ pub fn Rect %( %.color: Color, %.children: ui.Component %) !void %{
     ui.writeBlockSize(constraints);
 %}
 
-pub fn app %( %) !void %{
-    return Rect(Color.light, %[
+pub fn FillSpace %( %) !void %{
+    const constraints = ui.startBlock();
+
+    ui.writeBlockSize(.{
+        constraints.w orelse 0,
+        constraints.h orelse 0,
+    });
+%}
+
+pub fn app %( %) void %{
+    try Rect(Color.light, %[
+        try FillSpace();
         // nothing yet
     %]);
 %}

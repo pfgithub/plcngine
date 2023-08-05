@@ -56,9 +56,15 @@ const names = {
   state(id: number): string {
     return "_state_"+id;
   },
+  state_ty(id: number): string {
+    return "_State_"+id;
+  },
   fn(id: number): string {
     return "_fn_"+id;
   },
+}
+function name(a: string, b: number): string {
+  return "_" + a + "_" + b;
 }
 
 type TkzState = (
@@ -108,7 +114,10 @@ function compileZix(source: Tokenizer, emit: string[]) {
       ids.push(id);
       emit.push("{");
       if(args_tmp == null) source.error("args_tmp equals null");
-      emit.push("const "+names.state(id)+" = .{"+args_tmp.map(at => "." + at + " = &_fn_arg_" + at).join(", ")+"};");
+      emit.push("var _usr_data: usize = 0;");
+      emit.push("const "+names.state(id)+" = .{._usr = &_usr_data, "+args_tmp.map(at => "." + at + " = &_fn_arg_" + at).join(", ")+"};");
+      emit.push("const "+names.state_ty(id)+" = @TypeOf("+names.state(id)+");");
+      emit.push("_ = .{"+names.state(id) + ", " + names.state_ty(id)+"};");
       args_tmp = null;
     }else if(source.readIf("%}")) {
       if(state !== "fn_or_root") source.error("bad state");
@@ -121,12 +130,17 @@ function compileZix(source: Tokenizer, emit: string[]) {
       const id = gid++;
       id_srclocs.set(id, source.srcloc);
       ids.push(id);
-      emit.push("ui.callback(@src(), &"+names.state(parent_id)+", ");
-      emit.push("struct{fn "+names.fn(id)+"("+names.state(id)+": anytype) void {");
+      emit.push("ui.Component{");
+      emit.push(".data = @intFromPtr(&"+names.state(parent_id)+"),",);
+      emit.push(".method = &struct{fn "+names.fn(id)+"( "+name("state_raw", id)+": usize ) void {");
+      emit.push("const "+names.state_ty(id)+" = "+names.state_ty(parent_id)+";");
+      emit.push("const "+names.state(id)+" = @as(*const "+names.state_ty(id)+", @ptrFromInt("+name("state_raw", id)+")).*;");
+      emit.push("_ = .{"+names.state(id)+"};");
     }else if(source.readIf("%]")) {
       const sid = ids.pop();
       if(sid == null) source.error("ids empty");
-      emit.push("}}."+names.fn(sid)+")");
+      emit.push("}}."+names.fn(sid)+",",);
+      emit.push("}",);
     }else if(source.readIf("%%")) {
       emit.push("%");
     }else{
