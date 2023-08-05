@@ -97,7 +97,7 @@ function compileZix(source: Tokenizer, emit: string[]) {
         emit.push(names.state(cid) + "." + resname + ".*");
       }else if(state === "args") {
         if(args_tmp == null) source.error("args_tmp equals null");
-        emit.push(resname);
+        emit.push("_fn_arg_", resname);
         args_tmp.push(resname);
       }else source.error("not in args or fn_or_root context");
     }else if(source.readIf("%{")) {
@@ -108,7 +108,7 @@ function compileZix(source: Tokenizer, emit: string[]) {
       ids.push(id);
       emit.push("{");
       if(args_tmp == null) source.error("args_tmp equals null");
-      emit.push("const "+names.state(id)+" = .{"+args_tmp.map(at => "." + at + " = &" + at).join(", ")+"};");
+      emit.push("const "+names.state(id)+" = .{"+args_tmp.map(at => "." + at + " = &_fn_arg_" + at).join(", ")+"};");
       args_tmp = null;
     }else if(source.readIf("%}")) {
       if(state !== "fn_or_root") source.error("bad state");
@@ -117,7 +117,7 @@ function compileZix(source: Tokenizer, emit: string[]) {
     // %| a b c %| to pass args to %[ %] ?
     }else if(source.readIf("%[")) {
       const parent_id = ids[ids.length - 1];
-      if(parent_id == null) source.error("parent_id is null");
+      if(parent_id == null) source.error("child block must be inside capturable function");
       const id = gid++;
       id_srclocs.set(id, source.srcloc);
       ids.push(id);
@@ -127,6 +127,8 @@ function compileZix(source: Tokenizer, emit: string[]) {
       const sid = ids.pop();
       if(sid == null) source.error("ids empty");
       emit.push("}}."+names.fn(sid)+")");
+    }else if(source.readIf("%%")) {
+      emit.push("%");
     }else{
       source.error("percent nothing");
     }
@@ -137,6 +139,9 @@ function compileZix(source: Tokenizer, emit: string[]) {
       const srcloc = id_srclocs.get(id) ?? null;
       source.error("missing close bracket for this open bracket", srcloc);
     }
+  }
+  if(state !== "fn_or_root") {
+    source.error("bad state: "+state);
   }
 }
 
