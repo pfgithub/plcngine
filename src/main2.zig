@@ -12,8 +12,8 @@ const vf2i = math.vf2i;
 
 const std = @import("std");
 const mach = @import("mach");
-const Core = mach.Core;
-const gpu = mach.gpu;
+const core = @import("core");
+const gpu = core.gpu;
 const zm = @import("zmath");
 const zigimg = @import("zigimg");
 const assets = struct {
@@ -45,7 +45,6 @@ pub const UniformBufferObject = extern struct {
 };
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
-core: mach.Core,
 timer: mach.Timer,
 fps_timer: mach.Timer,
 window_title_timer: mach.Timer,
@@ -69,10 +68,11 @@ const sample_count = 4;
 
 pub fn init(app: *App) !void {
     const allocator = gpa.allocator();
-    try app.core.init(allocator, .{});
+
+    try core.init(.{});
 
     // fn (ctx: @TypeOf(context), typ: ErrorType, message: [*:0]const u8) callconv(.Inline) void
-    app.core.device().setUncapturedErrorCallback(app, struct{fn a(ctx: *App, typ: gpu.ErrorType, message: [*:0]const u8) callconv(.Inline) void {
+    core.device.setUncapturedErrorCallback(app, struct{fn a(ctx: *App, typ: gpu.ErrorType, message: [*:0]const u8) callconv(.Inline) void {
         _ = ctx;
         std.log.scoped(.wgpu).err("{s} / {s}", .{@tagName(typ), message});
         std.process.exit(1);
@@ -83,7 +83,7 @@ pub fn init(app: *App) !void {
     app.render = try Render.create(allocator, app.world, app);
     errdefer app.render.destroy();
 
-    const shader_module = app.core.device().createShaderModuleWGSL("shader.wgsl", @embedFile("shaders/indexed_image.wgsl"));
+    const shader_module = core.device.createShaderModuleWGSL("shader.wgsl", @embedFile("shaders/indexed_image.wgsl"));
     defer shader_module.release();
 
     const vertex_attributes = [_]gpu.VertexAttribute{
@@ -121,7 +121,7 @@ pub fn init(app: *App) !void {
         },
     };
     const color_target = gpu.ColorTargetState{
-        .format = app.core.descriptor().format,
+        .format = core.descriptor.format,
         .blend = &blend,
         .write_mask = gpu.ColorWriteMaskFlags.all,
     };
@@ -148,9 +148,9 @@ pub fn init(app: *App) !void {
             .count = sample_count,
         },
     };
-    const pipeline = app.core.device().createRenderPipeline(&pipeline_descriptor);
+    const pipeline = core.device.createRenderPipeline(&pipeline_descriptor);
 
-    const queue = app.core.device().getQueue();
+    const queue = core.device.getQueue();
 
     app.timer = try mach.Timer.start();
     app.fps_timer = try mach.Timer.start();
@@ -163,12 +163,12 @@ pub fn init(app: *App) !void {
     app.texture_view = null;
     app.frc = FramerateCounter.init();
 
-    app.core.device().tick();
+    core.device.tick();
 }
 
 pub fn deinit(app: *App) void {
     defer _ = gpa.deinit();
-    defer app.core.deinit();
+    defer core.deinit();
 
     if(app.texture) |dt| dt.release();
     if(app.texture_view) |dtv| dtv.release();
@@ -195,17 +195,17 @@ fn EnumBitSet(comptime Enum: type) type {
     };
 }
 const InputHelper = struct {
-    keys_held: EnumBitSet(Core.Key) = EnumBitSet(Core.Key).initEmpty(),
-    mouse_held: EnumBitSet(Core.MouseButton) = EnumBitSet(Core.MouseButton).initEmpty(),
+    keys_held: EnumBitSet(core.Key) = EnumBitSet(core.Key).initEmpty(),
+    mouse_held: EnumBitSet(core.MouseButton) = EnumBitSet(core.MouseButton).initEmpty(),
     mouse_pos: ?Vec2f32 = null,
 
     frame: struct {
-        key_press: EnumBitSet(Core.Key) = EnumBitSet(Core.Key).initEmpty(),
-        key_repeat: EnumBitSet(Core.Key) = EnumBitSet(Core.Key).initEmpty(),
-        key_release: EnumBitSet(Core.Key) = EnumBitSet(Core.Key).initEmpty(),
+        key_press: EnumBitSet(core.Key) = EnumBitSet(core.Key).initEmpty(),
+        key_repeat: EnumBitSet(core.Key) = EnumBitSet(core.Key).initEmpty(),
+        key_release: EnumBitSet(core.Key) = EnumBitSet(core.Key).initEmpty(),
 
-        mouse_press: EnumBitSet(Core.MouseButton) = EnumBitSet(Core.MouseButton).initEmpty(),
-        mouse_release: EnumBitSet(Core.MouseButton) = EnumBitSet(Core.MouseButton).initEmpty(),
+        mouse_press: EnumBitSet(core.MouseButton) = EnumBitSet(core.MouseButton).initEmpty(),
+        mouse_release: EnumBitSet(core.MouseButton) = EnumBitSet(core.MouseButton).initEmpty(),
         mouse_scroll: Vec2f32 = .{0, 0},
         mouse_delta: Vec2f32 = .{0, 0},
     } = .{},
@@ -244,7 +244,7 @@ const InputHelper = struct {
     fn startFrame(ih: *InputHelper) void {
         ih.frame = .{};
     }
-    fn update(ih: *InputHelper, event: Core.Event) !void {
+    fn update(ih: *InputHelper, event: core.Event) !void {
         switch(event) {
             .key_press => |ev| {
                 ih.keys_held.set(ev.key, true);
@@ -349,14 +349,14 @@ const Controller = struct {
 };
 
 pub fn update(app: *App) !bool {
-    var iter = app.core.pollEvents();
+    var iter = core.pollEvents();
     while (iter.next()) |event| {
         app.ih.startFrame();
         try app.ih.update(event);
 
         app.render.window_size = .{
-            @floatFromInt(app.core.descriptor().width),
-            @floatFromInt(app.core.descriptor().height),
+            @floatFromInt(core.descriptor.width),
+            @floatFromInt(core.descriptor.height),
         };
         try app.controller.update(app);
 
@@ -380,12 +380,12 @@ pub fn update(app: *App) !bool {
         if(app.texture != null) unreachable;
         if(app.texture_view != null) unreachable;
 
-        app.texture = app.core.device().createTexture(&gpu.Texture.Descriptor{
+        app.texture = core.device.createTexture(&gpu.Texture.Descriptor{
             .size = gpu.Extent3D{
-                .width = app.core.descriptor().width,
-                .height = app.core.descriptor().height,
+                .width = core.descriptor.width,
+                .height = core.descriptor.height,
             },
-            .format = app.core.descriptor().format,
+            .format = core.descriptor.format,
             .usage = .{ .render_attachment = true },
             .sample_count = sample_count,
         });
@@ -397,13 +397,13 @@ pub fn update(app: *App) !bool {
 
     // switch (ev.key) {
     //     .space => return true,
-    //     .one => app.core.setVSync(.none),
-    //     .two => app.core.setVSync(.double),
-    //     .three => app.core.setVSync(.triple),
+    //     .one => core.setVSync(.none),
+    //     .two => core.setVSync(.double),
+    //     .three => core.setVSync(.triple),
     //     else => {},
     // }
 
-    const back_buffer_view = app.core.swapChain().getCurrentTextureView().?;
+    const back_buffer_view = core.swap_chain.getCurrentTextureView().?;
     const color_attachment = gpu.RenderPassColorAttachment{
         .view = if(sample_count == 1) back_buffer_view else app.texture_view.?,
         .resolve_target = if(sample_count == 1) null else back_buffer_view,
@@ -412,7 +412,7 @@ pub fn update(app: *App) !bool {
         .store_op = if(sample_count == 1) .store else .discard,
     };
 
-    const encoder = app.core.device().createCommandEncoder(null);
+    const encoder = core.device.createCommandEncoder(null);
     const render_pass_info = gpu.RenderPassDescriptor.init(.{
         .color_attachments = &.{color_attachment},
     });
@@ -430,24 +430,24 @@ pub fn update(app: *App) !bool {
 
     app.queue.submit(&[_]*gpu.CommandBuffer{command});
     command.release();
-    app.core.swapChain().present();
+    core.swap_chain.present();
     back_buffer_view.release();
 
     // const delta_time = app.fps_timer.read();
     // app.fps_timer.reset();
     // var buf: [32]u8 = undefined;
     // const title = try std.fmt.bufPrintZ(&buf, "Textured Cube [ FPS: {d} ]", .{@floor(1 / delta_time)});
-    // app.core.setTitle(title);
+    // core.setTitle(title);
     // if (app.window_title_timer.read() >= 1.0) {
     //     app.window_title_timer.reset();
     // }
 
-    app.core.device().tick();
+    core.device.tick();
 
     app.frc.onFrame();
     // var buf: [64]u8 = undefined;
     // const title = try std.fmt.bufPrintZ(&buf, "plcngine [ FPS: {d:.2} ]", .{ app.frc.getFramerate() });
-    // app.core.setTitle(title);
+    // core.setTitle(title);
     // setTitle memory mut last until the main thread accepts the updated title. so uuh?
 
     return false;

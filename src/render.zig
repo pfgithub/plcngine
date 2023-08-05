@@ -5,6 +5,7 @@ const World = world_import.World;
 const Chunk = world_import.Chunk;
 const CHUNK_SIZE = world_import.CHUNK_SIZE;
 const App = @import("main2.zig");
+const core = @import("core");
 
 const x = math.x;
 const y = math.y;
@@ -203,7 +204,7 @@ pub const Render = struct {
         encoder: *gpu.CommandEncoder,
     ) !void {
         if(render.uniform_buffer == null) {
-            render.uniform_buffer = render.app.core.device().createBuffer(&.{
+            render.uniform_buffer = core.device.createBuffer(&.{
                 .usage = .{ .copy_dst = true, .uniform = true },
                 .size = @sizeOf(App.UniformBufferObject),
                 .mapped_at_creation = false,
@@ -244,7 +245,7 @@ pub const Render = struct {
                 .width = UI_TEX_IMAGE_WIDTH,
                 .height = UI_TEX_IMAGE_HEIGHT,
             };
-            render.ui_texture = render.app.core.device().createTexture(&.{
+            render.ui_texture = core.device.createTexture(&.{
                 .size = img_size,
                 .format = .rgba8_unorm,
                 .usage = .{
@@ -264,14 +265,14 @@ pub const Render = struct {
         }
 
         if(render.ui_vertex_buffer) |b| b.release();
-        render.ui_vertex_buffer = render.app.core.device().createBuffer(&.{
+        render.ui_vertex_buffer = core.device.createBuffer(&.{
             .usage = .{ .copy_dst = true, .vertex = true },
             .size = @sizeOf(App.Vertex) * vertices.items.len,
             .mapped_at_creation = false,
         });
         encoder.writeBuffer(render.ui_vertex_buffer.?, 0, vertices.items);
 
-        const sampler = render.app.core.device().createSampler(&.{
+        const sampler = core.device.createSampler(&.{
             .mag_filter = .nearest,
             .min_filter = .nearest,
         });
@@ -281,7 +282,7 @@ pub const Render = struct {
         defer texture_view.release();
 
         if(render.ui_bind_group) |prev_bg| prev_bg.release();
-        render.ui_bind_group = render.app.core.device().createBindGroup(
+        render.ui_bind_group = core.device.createBindGroup(
             &gpu.BindGroup.Descriptor.init(.{
                 .layout = render.app.pipeline.getBindGroupLayout(0),
                 .entries = &.{
@@ -324,7 +325,7 @@ pub const Render = struct {
         const cri = &chunk.chunk_render_info;
         const img_size = gpu.Extent3D{ .width = CHUNK_SIZE, .height = CHUNK_SIZE };
         if(cri.last_updated == 0) {
-            cri.gpu_texture = render.app.core.device().createTexture(&.{
+            cri.gpu_texture = core.device.createTexture(&.{
                 .size = img_size,
                 .format = .r8_unorm, // alternatively: r8_uint
                 .usage = .{
@@ -353,7 +354,7 @@ pub const Render = struct {
             .draw_colors = 0o07743210,
         });
 
-        if(cri.vertex_buffer == null) cri.vertex_buffer = render.app.core.device().createBuffer(&.{
+        if(cri.vertex_buffer == null) cri.vertex_buffer = core.device.createBuffer(&.{
             .usage = .{ .copy_dst = true, .vertex = true },
             .size = @sizeOf(App.Vertex) * vertices.len,
             .mapped_at_creation = false,
@@ -361,7 +362,7 @@ pub const Render = struct {
         encoder.writeBuffer(cri.vertex_buffer.?, 0, vertices);
 
 
-        const sampler = app.core.device().createSampler(&.{
+        const sampler = core.device.createSampler(&.{
             .mag_filter = .nearest,
             .min_filter = .nearest,
         });
@@ -373,7 +374,7 @@ pub const Render = struct {
 
 
         if(cri.bind_group) |prev_bg| prev_bg.release();
-        cri.bind_group = app.core.device().createBindGroup(
+        cri.bind_group = core.device.createBindGroup(
             &gpu.BindGroup.Descriptor.init(.{
                 .layout = app.pipeline.getBindGroupLayout(0),
                 .entries = &.{

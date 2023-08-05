@@ -19,3 +19,8 @@ notes:
     - chunks with lists of entities that cover the chunk? + entities/<id>.plc_entity
 - https://github.com/hexops/mach-examples/blob/main/examples/text2d/Text2D.zig
   - example of using a mach Atlas
+
+todo:
+
+- [ ] build msdfgen ext/import-font.cpp (mach provides freetype)
+- [ ] move all libs from submodules to package manager

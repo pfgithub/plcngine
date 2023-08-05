@@ -1,10 +1,16 @@
 const std = @import("std");
-const mach = @import("libs/mach/build.zig");
+const mach = @import("mach");
+
+const build_runner = @import("root");
+const deps = build_runner.dependencies;
+
+// TODO: move libs from submodules to package manager; search in zig-cache
+// for dependencies.zig, use deps.something to find the prefix folder
 
 fn linkMsdfGen(b: *std.Build, app: *std.build.Step.Compile) !void {
     _ = b;
     app.linkSystemLibrary("c++");
-    app.addIncludePath("libs/msdfgen/");
+    app.addIncludePath(.{.path = "libs/msdfgen/"});
     for(&[_][]const u8{
         "libs/msdfgen/core/contour-combiners.cpp",
         "libs/msdfgen/core/Contour.cpp",
@@ -31,7 +37,7 @@ fn linkMsdfGen(b: *std.Build, app: *std.build.Step.Compile) !void {
         // "libs/msdfgen/ext/import-font.cpp",
         // "libs/msdfgen/ext/resolve-shape-geometry.cpp",
     }) |cpp_file| {
-        app.addCSourceFile(cpp_file, &.{});
+        app.addCSourceFile(.{.file = .{.path = cpp_file}, .flags = &.{}});
     }
 }
 
@@ -44,6 +50,8 @@ pub fn build(b: *std.Build) !void {
         "bun", "src/zix_compiler.ts", "src",
     });
 
+    mach.mach_glfw_import_path = "mach.mach_core.mach_gpu.mach_gpu_dawn.mach_glfw";
+    mach.harfbuzz_import_path = "mach.mach_freetype.harfbuzz";
     const app = try mach.App.init(b, .{
         .name = "plcngine",
         .src = "src/main2.zig",

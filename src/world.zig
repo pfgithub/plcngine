@@ -90,7 +90,7 @@ pub const World = struct {
     pub fn chunkFilename(buf: *[128]u8, pos: Vec2i) []const u8 {
         return std.fmt.bufPrint(
             buf,
-            "saves/world0/chunks/C[{x},{x}].plc_chunk",
+            "../../saves/world0/chunks/C[{x},{x}].plc_chunk",
             .{pos[0], pos[1]},
         ) catch unreachable;
     }

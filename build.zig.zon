@@ -2,61 +2,97 @@
     .name = "plcngine",
     .version = "0.0.1",
     .dependencies = .{
+        .mach = .{
+            .url = "https://pkg.machengine.org/mach/22528fafd23bd03374c4d2c11d73380a89dd2750.tar.gz",
+            .hash = "12202783452441ba314b51cab0d626ef4529e2e27f1efb4eba1cb9d485508f0fbbc0",
+        },
         .mach_ecs = .{
-            .url = "https://github.com/hexops/mach-ecs/archive/3c5e29fb08b737a10fedfa70a7659d3506626435.tar.gz",
-            .hash = "1220fc0e7ee3f6a30836e2395bed39b1f525b5a0a40e79511267e2193f6c0fad895a",
+            .url = "https://pkg.machengine.org/mach-ecs/c40e06d8b144a8a7ee43eec71ce30c5594dd4d44.tar.gz",
+            .hash = "122075b0e5354db539d02df13207f366150121ca7e9bfaa2db58e2f7f7de16b126fe",
         },
         .mach_earcut = .{
-            .url = "https://github.com/hexops/mach-earcut/archive/826d2af59b3c061f20621c253ee0fab5f3eb23de.tar.gz",
-            .hash = "1220730f4f7416f57bf2ec74abd8d1ce8686a7efa44a25b4c034bf0bf6f56f059ad7",
+            .url = "https://pkg.machengine.org/mach-earcut/fa2d4962181d812960838435f95916c95f7c9132.tar.gz",
+            .hash = "1220da97fa7b8ffb9576aa3e2346b5e82d93f3d1fa67f30cc5a5afe4b401008d40c7",
+        },
+        .mach_core = .{
+            .url = "https://pkg.machengine.org/mach-core/9e15a94fa96a24220d7a529348c3d63af6deff63.tar.gz",
+            .hash = "122080c089b1a24b40be469ff836bfd000f02c5e46ee361999c064dff025e76a9941",
         },
         .mach_sysjs = .{
-            .url = "https://github.com/hexops/mach-sysjs/archive/b71eb0531f337fcca5a2b245f595355260109a34.tar.gz",
-            .hash = "12208b30f1d9c229d1e64483354610207c9aa06350a46558560b818d597800ed86e0",
+            .url = "https://pkg.machengine.org/mach-sysjs/3981ad542c0f25158f0ee828ca414720f9c7ce29.tar.gz",
+            .hash = "1220316bef3193b1054139e5c67e3aabcd2cdc2fe9a12318e7ff5656130591aab701",
         },
         .mach_gamemode = .{
-            .url = "https://github.com/hexops/mach-gamemode/archive/6e71d19d7eecbf0230e5c445dbe9281e45393245.tar.gz",
-            .hash = "1220ff812193615e03375a342a7c8a52f368eab219bceab3039de1915f9c945f2a66",
+            .url = "https://pkg.machengine.org/mach-gamemode/e529b6a2ecedcc0bef24ded1ed83c0993fbc8adb.tar.gz",
+            .hash = "1220a3e873a1cd61cc973ed7228770face833303da9191cac972ca4c16fedead6bbe",
         },
         .mach_model3d = .{
-            .url = "https://github.com/hexops/mach-model3d/archive/13c35a8f6e733210f32c4a0ff7379c800b0d6fda.tar.gz",
-            .hash = "1220b14687e0ba3ac404c2ed39e7b2e1e771c3076a67ba1e7d61875aeb0ce13a564d",
+            .url = "https://pkg.machengine.org/mach-model3d/57adb73c82aa595c04cf770bf10c93feb5281a52.tar.gz",
+            .hash = "12200b014b68d5f35243ea86a92cd76950f6f459b388c40ea0c8172f4e0f1236042b",
         },
         .mach_basisu = .{
-            .url = "https://github.com/hexops/mach-basisu/archive/831de64fe2d7933d6418440f8558444ca32eeca5.tar.gz",
-            .hash = "1220ead8a15f606d6f0f853fe401460dfe18811e3d5d1aa7e808be825e44f17f0dc3",
+            .url = "https://pkg.machengine.org/mach-basisu/1dac12fffee96af962aece3c3d746c84e1b2c662.tar.gz",
+            .hash = "122022ddc271e5dca752ddcf543adb7f61f53505dc2886253b06eb219fd7b71317b9",
+        },
+        .basisu = .{
+            .url = "https://pkg.machengine.org/basisu/de74bd8cbf917f859cb61aafa0e4a128ec4718ab.tar.gz",
+            .hash = "122099b6de5a409198710ade9c1daa7b8b62fdd043edf22dc7187b6e737b05a49b48",
         },
         .mach_sysaudio = .{
-            .url = "https://github.com/hexops/mach-sysaudio/archive/583d017ed01540c421ff5004825036b7c982eb7c.tar.gz",
-            .hash = "12200bef31118c7269e565c7a9fbd6719257182bbe8dd85d18b5b70b007d8e6c7ed3",
+            .url = "https://pkg.machengine.org/mach-sysaudio/8f7b1b2eb80c46708dcf965f1edbbafab140bc0e.tar.gz",
+            .hash = "1220561684381685b46028300f2169ff6d5bed6fbafbcc2254e281fed8a3505bee6f",
+        },
+        .mach_gpu = .{
+            .url = "https://pkg.machengine.org/mach-gpu/40c5546423ddd4f62c2bde00ee2628a596a91822.tar.gz",
+            .hash = "1220faea5c7ad024a4c14a8612e8cef93021a0cc83301a7d5cd13a3e581aeb6ac805",
+        },
+        .mach_gpu_dawn = .{
+            .url = "https://pkg.machengine.org/mach-gpu-dawn/91f17bc9cdc6c27a6624b6a9c01000b7054d699d.tar.gz",
+            .hash = "122030c4729839935ec273aad21850943c9dd5e7fcae7353c0b2c25ef4b396780604",
         },
         .mach_glfw = .{
-            .url = "https://github.com/hexops/mach-glfw/archive/8e78e0175951117213ea65fec32fd61f2e39f4ea.tar.gz",
-            .hash = "12202c9e56ab6822cf9a16f1b5c15ff17ba17c67c1ec12aa77bc2313dfe9d3c235ec",
+            .url = "https://pkg.machengine.org/mach-glfw/b250f2c068e91d8a5bf10975d53a8ca2cb8e2066.tar.gz",
+            .hash = "12206a15305a16421a986cbaf98d3c839c86a77c78a3bb2b570cea49aee7bb37ce2d",
+        },
+        .mach_freetype = .{
+            .url = "https://pkg.machengine.org/mach-freetype/594ce4a7f09dced26101d9fb14068f1eb757b00a.tar.gz",
+            .hash = "122061c6e87e535e82d4d262c59a522875f865418bd5a50ada6e61a28ec1cc7f69a8",
+        },
+        .harfbuzz = .{
+            .url = "https://pkg.machengine.org/harfbuzz/67b985c93eae7ab8b1a024b2b4249b4fc2ae2756.tar.gz",
+            .hash = "1220604f5cc7db54dafa29676289923af62623a1ccfbb5efce3cd329278a4829f01b",
+        },
+        .freetype = .{
+            .url = "https://pkg.machengine.org/freetype/c3194021bd007809d8297e4a177b7e7ecd587bbe.tar.gz",
+            .hash = "12206055f33e9fcdf57dc0014f15b84d740b9610b783346a32b78c0e178aa3b3ba07",
         },
         .glfw = .{
-            .url = "https://github.com/hexops/glfw/archive/0e4cdba4216c6def0423462a2f21fef80683d56d.tar.gz",
-            .hash = "1220a0b036095c2c54af347c86514ed9dab431299f0140b0e434ed119f85a976c32b",
+            .url = "https://pkg.machengine.org/glfw/77086fe2c1bbbf55fa5f2572eb6a604bc3be639f.tar.gz",
+            .hash = "1220667f4ae9cab35b27fa129e265457be42a2f11f2ca57d9ea5d7f56213cbc3ffde",
         },
         .direct3d_headers = .{
-            .url = "https://github.com/hexops/direct3d-headers/archive/773dce3f079eecdccc7c71d1318a0741649d568b.tar.gz",
-            .hash = "12200d2155216c5eb5f111282cd355b5433cad6a68fd040294e695149cba329f7c12",
+            .url = "https://pkg.machengine.org/direct3d-headers/c878b57ed63e4cf320f9c2f48991f8c3146f4e20.tar.gz",
+            .hash = "1220f42f404cce90b06fcc76678f8dadf4f8d14f2c81df085b3ea7202d7625d0274b",
         },
         .vulkan_headers = .{
-            .url = "https://github.com/hexops/vulkan-headers/archive/e1b061ff624531e82a7daea5dbd56c07e08bf0be.tar.gz",
-            .hash = "12204967f9d07fda3af6a21d6ab71fb832da2186176c530a7a14aa96043537399e6b",
+            .url = "https://pkg.machengine.org/vulkan-headers/b10fb77f54d2d24b04267e1a84e4f63bad9d6d33.tar.gz",
+            .hash = "12209df6486512fccc34a78cc55f2d761f58f36ddb651d6d0fa8c2d1b1f59c6117ad",
         },
         .wayland_headers = .{
-            .url = "https://github.com/hexops/wayland-headers/archive/7bf46f3d60edab2171643ff85770c392ef62704d.tar.gz",
-            .hash = "1220689912c40c0880b094f748199c490810d4fa4c58ce1ef9058ce97f46ee28496a",
+            .url = "https://pkg.machengine.org/wayland-headers/3255fb47a6ae42259df17558c6c0db4f59036e68.tar.gz",
+            .hash = "122047bda37ce846be8f120fe920d909a28b257d1ec989b0f753202c8d0e95674527",
         },
         .x11_headers = .{
-            .url = "https://github.com/hexops/x11-headers/archive/99af89c7bfdc7db503f3a7003571f8e81bcd09f3.tar.gz",
-            .hash = "1220e6bd3186841c1da38d862d52ba88dec9633d24f409eda27627321937419a0ddb",
+            .url = "https://pkg.machengine.org/x11-headers/d61bdcece6ad9e9b6327247ff59ef270f7d08ad3.tar.gz",
+            .hash = "1220bfcac525c1e3939903700c75d9925ad8b7abf0f95401e4dced870f1f22de5026",
         },
         .linux_audio_headers = .{
-            .url = "https://github.com/hexops/linux-audio-headers/archive/d643d20f87e621b4cae1b04a2a112a881334e8b9.tar.gz",
-            .hash = "1220cac816e759824c7f70b6ffd0e6852a33d943b763349421657fd0d8de0587f667",
+            .url = "https://pkg.machengine.org/linux-audio-headers/7605fcefd39aa342518c60198f53f06cec7f8197.tar.gz",
+            .hash = "122035d7391b69192d9098a57e67173f0a7136b96963cc75d2d002f84bdf6cade7ea",
+        },
+        .xcode_frameworks = .{
+            .url = "https://github.com/hexops/xcode-frameworks-pkg/archive/d486474a6af7fafd89e8314e0bf7eca4709f811b.tar.gz",
+            .hash = "1220293eae4bf67a7c27a18a8133621337cde91a97bc6859a9431b3b2d4217dfb5fb",
         },
     },
 }
