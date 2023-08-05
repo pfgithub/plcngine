@@ -6,7 +6,7 @@ zig build run
 zig bulid run
 ```
 
-fix package:
+fix package: (this step will not be necessary after https://github.com/ziglang/zig/pull/16667 is merged)
 
 ```
 cd ~/.cache/zig/p/12205138bd6276b716921d78586aa272d11dc9e848086fb9cb56f41f6be7869b466e
