@@ -34,7 +34,7 @@ fn linkMsdfGen(b: *std.Build, app: *std.build.Step.Compile) !void {
         "libs/msdfgen/core/SignedDistance.cpp",
         "libs/msdfgen/core/Vector2.cpp",
 
-        // "libs/msdfgen/ext/import-font.cpp",
+        "libs/msdfgen/ext/import-font.cpp",
         // "libs/msdfgen/ext/resolve-shape-geometry.cpp",
     }) |cpp_file| {
         app.addCSourceFile(.{.file = .{.path = cpp_file}, .flags = &.{}});

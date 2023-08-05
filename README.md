@@ -22,5 +22,5 @@ notes:
 
 todo:
 
-- [ ] build msdfgen ext/import-font.cpp (mach provides freetype)
+- [x] build msdfgen ext/import-font.cpp (mach provides freetype)
 - [ ] move all libs from submodules to package manager
