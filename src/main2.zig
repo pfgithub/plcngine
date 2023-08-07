@@ -67,8 +67,6 @@ frc: FramerateCounter,
 const sample_count = 4;
 
 pub fn init(app: *App) !void {
-    const allocator = gpa.allocator();
-
     try core.init(.{});
 
     // fn (ctx: @TypeOf(context), typ: ErrorType, message: [*:0]const u8) callconv(.Inline) void
@@ -78,9 +76,9 @@ pub fn init(app: *App) !void {
         std.process.exit(1);
     }}.a);
 
-    app.world = try World.create(allocator);
+    app.world = try World.create(core.allocator);
     errdefer app.world.destroy();
-    app.render = try Render.create(allocator, app.world, app);
+    app.render = try Render.create(core.allocator, app.world, app);
     errdefer app.render.destroy();
 
     const shader_module = core.device.createShaderModuleWGSL("shader.wgsl", @embedFile("shaders/indexed_image.wgsl"));
