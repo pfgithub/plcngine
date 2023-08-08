@@ -30,13 +30,33 @@ const Tone = struct {
     frequency: f32,
     start_time: u32,
     end_time: u32,
+    wave: Wave,
 };
+
+const Wave = enum{
+    triangle,
+    sin,
+    square,
+    sawtooth,
+
+    fn exec(wave: Wave, f: f32) f32 {
+        const fv: f32 = f * 2.0;
+        return switch(wave) {
+            .triangle => @fabs(@mod(fv, 2) - 1),
+            .sin => std.math.sin(fv * std.math.pi),
+            .square => if(@mod(fv, 2) > 1.0) 0.2 else -0.2,
+            .sawtooth => (@mod(fv, 2) - 1) * 0.4,
+        };
+    }
+};
+
+var DEFAULT_WAVE: Wave = .square;
 
 pub fn init(app: *App) !void {
     try mach.core.init(.{});
 
     app.sample_counter = 0;
-    app.playing = [_]Tone{.{.frequency = 0, .start_time = 0, .end_time = 0}} ** MAX_TONES;
+    app.playing = [_]Tone{.{.frequency = 0, .start_time = 0, .end_time = 0, .wave = DEFAULT_WAVE}} ** MAX_TONES;
 
     app.audio_ctx = try sysaudio.Context.init(null, gpa.allocator(), .{});
     errdefer app.audio_ctx.deinit();
@@ -64,6 +84,10 @@ pub fn update(app: *App) !bool {
                 switch (ev.key) {
                     .down => try app.player.setVolume(@max(0.0, vol - 0.1)),
                     .up => try app.player.setVolume(@min(1.0, vol + 0.1)),
+                    .one => DEFAULT_WAVE = .sin,
+                    .two => DEFAULT_WAVE = .triangle,
+                    .three => DEFAULT_WAVE = .square,
+                    .four => DEFAULT_WAVE = .sawtooth,
                     else => {},
                 }
 
@@ -107,15 +131,14 @@ fn writeFn(app_op: ?*anyopaque, frames: usize) void {
 
             const tone_sample_counter: f32 = @floatFromInt(app.sample_counter -% tone.start_time);
             const tone_end_counter: f32 = @floatFromInt(tone.end_time -% app.sample_counter);
-            const duration: f32 = 1.5 * sample_rate; // 1.5 sec
+            const duration: f32 = TONE_START_SEC * sample_rate;
             const end_duration: f32 = TONE_END_SEC * sample_rate;
 
             // The sine wave that plays the frequency.
             const gain = 0.1;
-            const sine_wave = std.math.sin(tone.frequency * 2.0 * std.math.pi * sample_counter / sample_rate) * gain;
+            const sine_wave = DEFAULT_WAVE.exec(tone.frequency * sample_counter / sample_rate) * gain;
 
-            // A number ranging from 0.0 to 1.0 in the first 1/64th of the duration of the tone.
-            const fade_in = @max(@min(tone_sample_counter / (duration / 64.0), 1.0), 0.0);
+            const fade_in = @max(@min(tone_sample_counter / duration, 1.0), 0.0);
 
             // A number ranging from 1.0 to 0.0 over half the duration of the tone.
             var fade_out = @max(@min(tone_end_counter / end_duration, 1.0), 0.0);
@@ -131,7 +154,9 @@ fn writeFn(app_op: ?*anyopaque, frames: usize) void {
         app.player.writeAll(frame, sample);
     }
 }
-const TONE_END_SEC: f32 = 0.2;
+
+const TONE_START_SEC: f32 = 0.01;
+const TONE_END_SEC: f32 = 0.01;
 
 pub fn fillTone(app: *App, frequency: f32) void {
     for (&app.playing) |*tone| {
@@ -140,6 +165,7 @@ pub fn fillTone(app: *App, frequency: f32) void {
                 .frequency = frequency,
                 .start_time = app.sample_counter,
                 .end_time = std.math.maxInt(u32),
+                .wave = DEFAULT_WAVE,
             };
             return;
         }
@@ -149,7 +175,6 @@ pub fn fillTone(app: *App, frequency: f32) void {
 pub fn delTone(app: *App, frequency: f32) void {
     const sample_rate: f32 = @floatFromInt(app.player.sampleRate());
     for (&app.playing) |*tone| {
-        std.log.info("dur {d}", .{@as(u32, @intFromFloat(TONE_END_SEC * sample_rate))});
         if (tone.frequency == frequency and tone.end_time == std.math.maxInt(u32)) {
             tone.end_time = app.sample_counter +% @as(u32, @intFromFloat(TONE_END_SEC * sample_rate));
         }
