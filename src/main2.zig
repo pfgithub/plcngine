@@ -4,6 +4,7 @@ const World = world_import.World;
 const Render = render_import.Render;
 const math = @import("math.zig");
 const FramerateCounter = @import("util/framerate_counter.zig");
+const sysaudio = mach.sysaudio;
 
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
@@ -54,6 +55,7 @@ texture: ?*gpu.Texture,
 texture_view: ?*gpu.TextureView,
 audio_ctx: sysaudio.Context,
 player: sysaudio.Player,
+title_buf: [32:0]u8,
 
 world: *World,
 render: *Render,
@@ -77,6 +79,8 @@ pub fn init(app: *App) !void {
         std.log.scoped(.wgpu).err("{s} / {s}", .{@tagName(typ), message});
         std.process.exit(1);
     }}.a);
+
+    app.title_buf = std.mem.zeroes([32:0]u8);
 
     app.world = try World.create(core.allocator);
     errdefer app.world.destroy();
@@ -190,32 +194,9 @@ pub fn deinit(app: *App) void {
 fn writeFn(app_op: ?*anyopaque, frames: usize) void {
     const app: *App = @as(*App, @ptrCast(@alignCast(app_op)));
 
-    var frame: usize = 0;
-    while (frame < frames) : (frame += 1) {
+    for (0..frames) |frame| {
         var sample: f32 = 0;
-        for (&app.playing) |*tone| {
-            if (tone.sample_counter >= tone.duration) continue;
-
-            tone.sample_counter += 1;
-            const sample_counter = @as(f32, @floatFromInt(tone.sample_counter));
-            const duration = @as(f32, @floatFromInt(tone.duration));
-
-            // The sine wave that plays the frequency.
-            const gain = 0.1;
-            const sine_wave = std.math.sin(tone.frequency * 2.0 * std.math.pi * sample_counter / @as(f32, @floatFromInt(app.player.sampleRate()))) * gain;
-
-            // A number ranging from 0.0 to 1.0 in the first 1/64th of the duration of the tone.
-            const fade_in = @min(sample_counter / (duration / 64.0), 1.0);
-
-            // A number ranging from 1.0 to 0.0 over half the duration of the tone.
-            const progression = sample_counter / duration; // 0.0 (tone start) to 1.0 (tone end)
-            const fade_out = 1.0 - std.math.clamp(std.math.log10(progression * 10.0), 0.0, 1.0);
-
-            // Mix this tone into the sample we'll actually play on e.g. the speakers, reducing
-            // sine wave intensity if we're fading in or out over the entire duration of the
-            // tone.
-            sample += sine_wave * fade_in * fade_out;
-        }
+        // sample rate = app.player.sampleRate()
 
         // Emit the sample on all channels.
         app.player.writeAll(frame, sample);
@@ -479,14 +460,12 @@ pub fn update(app: *App) !bool {
     core.swap_chain.present();
     back_buffer_view.release();
 
-    // const delta_time = app.fps_timer.read();
-    // app.fps_timer.reset();
-    // var buf: [32]u8 = undefined;
-    // const title = try std.fmt.bufPrintZ(&buf, "Textured Cube [ FPS: {d} ]", .{@floor(1 / delta_time)});
-    // core.setTitle(title);
-    // if (app.window_title_timer.read() >= 1.0) {
-    //     app.window_title_timer.reset();
-    // }
+    if(true) {
+        const delta_time = app.fps_timer.read();
+        app.fps_timer.reset();
+        const title = try std.fmt.bufPrintZ(&app.title_buf, "Textured Cube [ FPS: {d:.0} ]", .{@floor(1 / delta_time)});
+        core.setTitle(title);
+    }
 
     core.device.tick();
 

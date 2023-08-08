@@ -56,7 +56,7 @@ pub fn build(b: *std.Build) !void {
     mach.harfbuzz_import_path = "mach.mach_freetype.harfbuzz";
     const app = try mach.App.init(b, .{
         .name = "plcngine",
-        .src = "src/audio.zig",
+        .src = "src/main2.zig",
         .target = target,
         .deps = &[_]std.build.ModuleDependency{},
         .optimize = optimize,
