@@ -52,6 +52,8 @@ pipeline: *gpu.RenderPipeline,
 queue: *gpu.Queue,
 texture: ?*gpu.Texture,
 texture_view: ?*gpu.TextureView,
+audio_ctx: sysaudio.Context,
+player: sysaudio.Player,
 
 world: *World,
 render: *Render,
@@ -80,6 +82,15 @@ pub fn init(app: *App) !void {
     errdefer app.world.destroy();
     app.render = try Render.create(core.allocator, app.world, app);
     errdefer app.render.destroy();
+
+    app.audio_ctx = try sysaudio.Context.init(null, gpa.allocator(), .{});
+    errdefer app.audio_ctx.deinit();
+    try app.audio_ctx.refresh();
+
+    const device = app.audio_ctx.defaultDevice(.playback) orelse return error.NoDeviceFound;
+    app.player = try app.audio_ctx.createPlayer(device, writeFn, .{ .user_data = app });
+    errdefer app.player.deinit();
+    try app.player.start();
 
     const shader_module = core.device.createShaderModuleWGSL("shader.wgsl", @embedFile("shaders/indexed_image.wgsl"));
     defer shader_module.release();
@@ -168,10 +179,47 @@ pub fn deinit(app: *App) void {
     defer _ = gpa.deinit();
     defer core.deinit();
 
+    app.player.deinit();
+    app.audio_ctx.deinit();
     if(app.texture) |dt| dt.release();
     if(app.texture_view) |dtv| dtv.release();
     app.render.destroy();
     app.world.destroy();
+}
+
+fn writeFn(app_op: ?*anyopaque, frames: usize) void {
+    const app: *App = @as(*App, @ptrCast(@alignCast(app_op)));
+
+    var frame: usize = 0;
+    while (frame < frames) : (frame += 1) {
+        var sample: f32 = 0;
+        for (&app.playing) |*tone| {
+            if (tone.sample_counter >= tone.duration) continue;
+
+            tone.sample_counter += 1;
+            const sample_counter = @as(f32, @floatFromInt(tone.sample_counter));
+            const duration = @as(f32, @floatFromInt(tone.duration));
+
+            // The sine wave that plays the frequency.
+            const gain = 0.1;
+            const sine_wave = std.math.sin(tone.frequency * 2.0 * std.math.pi * sample_counter / @as(f32, @floatFromInt(app.player.sampleRate()))) * gain;
+
+            // A number ranging from 0.0 to 1.0 in the first 1/64th of the duration of the tone.
+            const fade_in = @min(sample_counter / (duration / 64.0), 1.0);
+
+            // A number ranging from 1.0 to 0.0 over half the duration of the tone.
+            const progression = sample_counter / duration; // 0.0 (tone start) to 1.0 (tone end)
+            const fade_out = 1.0 - std.math.clamp(std.math.log10(progression * 10.0), 0.0, 1.0);
+
+            // Mix this tone into the sample we'll actually play on e.g. the speakers, reducing
+            // sine wave intensity if we're fading in or out over the entire duration of the
+            // tone.
+            sample += sine_wave * fade_in * fade_out;
+        }
+
+        // Emit the sample on all channels.
+        app.player.writeAll(frame, sample);
+    }
 }
 
 fn EnumBitSet(comptime Enum: type) type {
