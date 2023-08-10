@@ -6,6 +6,7 @@ const Chunk = world_import.Chunk;
 const CHUNK_SIZE = world_import.CHUNK_SIZE;
 const App = @import("main2.zig");
 const core = @import("core");
+const interface = @import("ui.zig");
 
 const x = math.x;
 const y = math.y;
@@ -227,17 +228,6 @@ pub const Render = struct {
     pub fn prepareUI(render: *Render,
         encoder: *gpu.CommandEncoder,
     ) !void {
-        var vertices = std.ArrayList(App.Vertex).init(render.alloc);
-        defer vertices.deinit();
-
-        try vertices.appendSlice(&vertexRect(.{
-            .ul = .{10, 10},
-            .br = .{90, 190},
-            .draw_colors = 0o33332,
-            .border_radius = 10.0,
-            .border = 2.0,
-        }));
-
         if(render.ui_texture == null) {
             const UI_TEX_IMAGE_WIDTH = 1;
             const UI_TEX_IMAGE_HEIGHT = 1;
@@ -263,6 +253,11 @@ pub const Render = struct {
                 0, 0, 0, 0,
             });
         }
+
+        var vertices = std.ArrayList(App.Vertex).init(render.alloc);
+        defer vertices.deinit();
+
+        try interface.sample(&vertices);
 
         if(render.ui_vertex_buffer) |b| b.release();
         render.ui_vertex_buffer = core.device.createBuffer(&.{
