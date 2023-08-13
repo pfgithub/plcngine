@@ -141,10 +141,7 @@ pub const Render = struct {
     window_size: Vec2f32 = .{0, 0},
 
     uniform_buffer: ?*gpu.Buffer = null,
-    ui_vertex_buffer: ?*gpu.Buffer = null,
-    ui_bind_group: ?*gpu.BindGroup = null,
-    ui_texture: ?*gpu.Texture = null,
-
+    ui: interface.UI = .{},
     world: *World,
     app: *App,
 
@@ -159,9 +156,7 @@ pub const Render = struct {
     }
     pub fn destroy(render: *Render) void {
         if(render.uniform_buffer) |b| b.release();
-        if(render.ui_vertex_buffer) |b| b.release();
-        if(render.ui_bind_group) |b| b.release();
-        if(render.ui_texture) |b| b.release();
+        render.ui.deinit();
         render.alloc.destroy(render);
     }
 
@@ -222,71 +217,7 @@ pub const Render = struct {
         }});
 
         try render.prepareWorld(encoder);
-        try render.prepareUI(encoder);
-    }
-
-    pub fn prepareUI(render: *Render,
-        encoder: *gpu.CommandEncoder,
-    ) !void {
-        if(render.ui_texture == null) {
-            const UI_TEX_IMAGE_WIDTH = 1;
-            const UI_TEX_IMAGE_HEIGHT = 1;
-            const img_size = gpu.Extent3D{
-                .width = UI_TEX_IMAGE_WIDTH,
-                .height = UI_TEX_IMAGE_HEIGHT,
-            };
-            render.ui_texture = core.device.createTexture(&.{
-                .size = img_size,
-                .format = .rgba8_unorm,
-                .usage = .{
-                    .texture_binding = true,
-                    .copy_dst = true,
-                    .render_attachment = true,
-                },
-            });
-
-            const data_layout = gpu.Texture.DataLayout{
-                .bytes_per_row = UI_TEX_IMAGE_WIDTH * 4, // width * channels
-                .rows_per_image = UI_TEX_IMAGE_HEIGHT, // height
-            };
-            render.app.queue.writeTexture(&.{ .texture = render.ui_texture.? }, &data_layout, &img_size, &[UI_TEX_IMAGE_WIDTH * UI_TEX_IMAGE_HEIGHT * 4]u8{
-                0, 0, 0, 0,
-            });
-        }
-
-        var vertices = std.ArrayList(App.Vertex).init(render.alloc);
-        defer vertices.deinit();
-
-        try interface.sample(&vertices);
-
-        if(render.ui_vertex_buffer) |b| b.release();
-        render.ui_vertex_buffer = core.device.createBuffer(&.{
-            .usage = .{ .copy_dst = true, .vertex = true },
-            .size = @sizeOf(App.Vertex) * vertices.items.len,
-            .mapped_at_creation = false,
-        });
-        encoder.writeBuffer(render.ui_vertex_buffer.?, 0, vertices.items);
-
-        const sampler = core.device.createSampler(&.{
-            .mag_filter = .nearest,
-            .min_filter = .nearest,
-        });
-        defer sampler.release();
-
-        const texture_view = render.ui_texture.?.createView(&gpu.TextureView.Descriptor{});
-        defer texture_view.release();
-
-        if(render.ui_bind_group) |prev_bg| prev_bg.release();
-        render.ui_bind_group = core.device.createBindGroup(
-            &gpu.BindGroup.Descriptor.init(.{
-                .layout = render.app.pipeline.getBindGroupLayout(0),
-                .entries = &.{
-                    gpu.BindGroup.Entry.buffer(0, render.uniform_buffer.?, 0, @sizeOf(App.UniformBufferObject)),
-                    gpu.BindGroup.Entry.sampler(1, sampler),
-                    gpu.BindGroup.Entry.textureView(2, texture_view),
-                },
-            }),
-        );
+        try render.ui.prepare(encoder, render.uniform_buffer.?);
     }
 
     pub fn prepareWorld(render: *Render,
@@ -385,7 +316,7 @@ pub const Render = struct {
         pass: *gpu.RenderPassEncoder,
     ) !void {
         try render.renderWorld(pass);
-        try render.renderUI(pass);
+        try render.ui.render(pass);
     }
 
     pub fn renderWorld(render: *Render,
@@ -420,14 +351,5 @@ pub const Render = struct {
         pass.setVertexBuffer(0, cri.vertex_buffer.?, 0, @sizeOf(App.Vertex) * VERTICES_LEN);
         pass.setBindGroup(0, cri.bind_group.?, &.{});
         pass.draw(VERTICES_LEN, 1, 0, 0);
-    }
-
-    pub fn renderUI(render: *Render,
-        pass: *gpu.RenderPassEncoder,
-    ) !void {
-        const vb_size = render.ui_vertex_buffer.?.getSize();
-        pass.setVertexBuffer(0, render.ui_vertex_buffer.?, 0, vb_size);
-        pass.setBindGroup(0, render.ui_bind_group.?, &.{});
-        pass.draw(@intCast(vb_size / @sizeOf(App.Vertex)), 1, 0, 0);
     }
 };

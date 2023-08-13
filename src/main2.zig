@@ -70,8 +70,10 @@ frc: FramerateCounter,
 /// https://godotshaders.com/shader/smooth-3d-pixel-filtering/
 const sample_count = 4;
 
+pub var instance: *App = undefined;
 pub fn init(app: *App) !void {
     try core.init(.{});
+    instance = app;
 
     // fn (ctx: @TypeOf(context), typ: ErrorType, message: [*:0]const u8) callconv(.Inline) void
     core.device.setUncapturedErrorCallback(app, struct{fn a(ctx: *App, typ: gpu.ErrorType, message: [*:0]const u8) callconv(.Inline) void {

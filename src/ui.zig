@@ -1,8 +1,25 @@
 const std = @import("std");
-const App = @import("main2.zig");
-const render = @import("render.zig");
 const math = @import("math.zig");
+const world_import = @import("world.zig");
+const World = world_import.World;
+const Chunk = world_import.Chunk;
+const CHUNK_SIZE = world_import.CHUNK_SIZE;
+const App = @import("main2.zig");
+const core = @import("core");
+const render = @import("render.zig");
+
+const x = math.x;
+const y = math.y;
+const z = math.z;
+const w = math.w;
+
+const mach = @import("mach");
+const gpu = mach.gpu;
+
 const Vec2i = math.Vec2i;
+const Vec2f32 = math.Vec2f32;
+const vi2f = math.vi2f;
+const vf2i = math.vf2i;
 
 const Color = union(enum) {
     pub const transparent = Color{.indexed = 0};
@@ -15,68 +32,94 @@ const Color = union(enum) {
     rgba: u32,
 };
 
-const ui = struct {
-    const Globals = struct {
-        arena: ?std.heap.ArenaAllocator,
-    };
-    var globals: Globals = .{
-        .arena = undefined,
-    };
-    fn alloc() std.mem.Allocator {
-        return ui.globals.arena.?.allocator();
+pub const UI = struct {
+    vertex_buffer: ?*gpu.Buffer = null,
+    bind_group: ?*gpu.BindGroup = null,
+    texture: ?*gpu.Texture = null,
+
+    pub fn deinit(ui: *UI) void {
+        if(ui.vertex_buffer) |b| b.release();
+        if(ui.bind_group) |b| b.release();
+        if(ui.texture) |b| b.release();
+    }
+
+    pub fn prepare(ui: *UI,
+        encoder: *gpu.CommandEncoder,
+        uniform_buffer: *gpu.Buffer,
+    ) !void {
+        if(ui.texture == null) {
+            const UI_TEX_IMAGE_WIDTH = 1;
+            const UI_TEX_IMAGE_HEIGHT = 1;
+            const img_size = gpu.Extent3D{
+                .width = UI_TEX_IMAGE_WIDTH,
+                .height = UI_TEX_IMAGE_HEIGHT,
+            };
+            ui.texture = core.device.createTexture(&.{
+                .size = img_size,
+                .format = .rgba8_unorm,
+                .usage = .{
+                    .texture_binding = true,
+                    .copy_dst = true,
+                    .render_attachment = true,
+                },
+            });
+
+            const data_layout = gpu.Texture.DataLayout{
+                .bytes_per_row = UI_TEX_IMAGE_WIDTH * 4, // width * channels
+                .rows_per_image = UI_TEX_IMAGE_HEIGHT, // height
+            };
+            App.instance.queue.writeTexture(&.{ .texture = ui.texture.? }, &data_layout, &img_size, &[UI_TEX_IMAGE_WIDTH * UI_TEX_IMAGE_HEIGHT * 4]u8{
+                0, 0, 0, 0,
+            });
+        }
+
+        var vertices = std.ArrayList(App.Vertex).init(core.allocator);
+        defer vertices.deinit();
+
+        try sample(&vertices);
+
+        if(ui.vertex_buffer) |b| b.release();
+        ui.vertex_buffer = core.device.createBuffer(&.{
+            .usage = .{ .copy_dst = true, .vertex = true },
+            .size = @sizeOf(App.Vertex) * vertices.items.len,
+            .mapped_at_creation = false,
+        });
+        encoder.writeBuffer(ui.vertex_buffer.?, 0, vertices.items);
+
+        const sampler = core.device.createSampler(&.{
+            .mag_filter = .nearest,
+            .min_filter = .nearest,
+        });
+        defer sampler.release();
+
+        const texture_view = ui.texture.?.createView(&gpu.TextureView.Descriptor{});
+        defer texture_view.release();
+
+        if(ui.bind_group) |prev_bg| prev_bg.release();
+        ui.bind_group = core.device.createBindGroup(
+            &gpu.BindGroup.Descriptor.init(.{
+                .layout = App.instance.pipeline.getBindGroupLayout(0),
+                .entries = &.{
+                    gpu.BindGroup.Entry.buffer(0, uniform_buffer, 0, @sizeOf(App.UniformBufferObject)),
+                    gpu.BindGroup.Entry.sampler(1, sampler),
+                    gpu.BindGroup.Entry.textureView(2, texture_view),
+                },
+            }),
+        );
+    }
+
+    pub fn render(ui: *UI,
+        pass: *gpu.RenderPassEncoder,
+    ) !void {
+        const vb_size = ui.vertex_buffer.?.getSize();
+        pass.setVertexBuffer(0, ui.vertex_buffer.?, 0, vb_size);
+        pass.setBindGroup(0, ui.bind_group.?, &.{});
+        pass.draw(@intCast(vb_size / @sizeOf(App.Vertex)), 1, 0, 0);
     }
 };
 
-pub fn startVList() void {
-
-}
-pub fn endVList() void {
-
-}
-
-const Constraints = struct {x: ?i32, y: ?i32};
-const ContainerHandler = struct {
-    data: usize,
-    get_constraints: *const fn(val: usize) UIError!Constraints,
-    post_child: *const fn(val: usize, size: Vec2i) UIError!void,
-};
-pub fn startContainer(handler: *const ContainerHandler) void {
-    _ = handler;
-}
-pub fn endContainer() void {
-
-}
-
-const UIError = error{UI_TemporaryError, UI_PermanentError, OutOfMemory};
-
-pub fn sample(vertices: *std.ArrayList(App.Vertex)) UIError!void {
-    if(ui.globals.arena == null) {
-        ui.globals.arena = std.heap.ArenaAllocator.init(vertices.allocator);
-    }else{
-        _ = ui.globals.arena.?.reset(.retain_capacity);
-    }
-
-    const result_size: ?*Vec2i = null;
-
-    startContainer(&.{
-        .data = 0,
-        .get_constraints = &struct {fn f(data: usize) UIError!Constraints {
-            _ = data;
-            return .{.x = null, .y = null};
-        }}.f,
-        .post_child = &struct {fn f(data: usize, size: Vec2i) UIError!void {
-            const data_ptr: ?*Vec2i = @ptrFromInt(data);
-            if(data_ptr != null) return error.UI_PermanentError;
-            data_ptr.?.* = size;
-        }}.f,
-    });
-    //startVList();
-    //useSize(.{16, 16});
-    //useSize(.{16, 16});
-    //endVList();
-    endContainer();
-
-    const final_size = result_size orelse Vec2i{80, 80};
+pub fn sample(vertices: *std.ArrayList(App.Vertex)) !void {
+    const final_size = Vec2i{80, 80};
 
     try vertices.appendSlice(&render.vertexRect(.{
         .ul = .{10, 10},
