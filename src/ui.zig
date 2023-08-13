@@ -35,42 +35,53 @@ const Color = union(enum) {
 pub const UI = struct {
     vertex_buffer: ?*gpu.Buffer = null,
     bind_group: ?*gpu.BindGroup = null,
+    atlas: mach.Atlas,
     texture: ?*gpu.Texture = null,
+
+    pub fn init(ui: *UI) !void {
+        ui.* = .{
+            .atlas = try mach.Atlas.init(core.allocator, 2048, .rgba), // rgba? should it be grayscale?
+        };
+    }
 
     pub fn deinit(ui: *UI) void {
         if(ui.vertex_buffer) |b| b.release();
         if(ui.bind_group) |b| b.release();
         if(ui.texture) |b| b.release();
+        ui.atlas.deinit(core.allocator);
     }
 
     pub fn prepare(ui: *UI,
         encoder: *gpu.CommandEncoder,
         uniform_buffer: *gpu.Buffer,
     ) !void {
+        var first_init = false;
+        const img_size = gpu.Extent3D{
+            .width = ui.atlas.size,
+            .height = ui.atlas.size,
+        };
         if(ui.texture == null) {
-            const UI_TEX_IMAGE_WIDTH = 1;
-            const UI_TEX_IMAGE_HEIGHT = 1;
-            const img_size = gpu.Extent3D{
-                .width = UI_TEX_IMAGE_WIDTH,
-                .height = UI_TEX_IMAGE_HEIGHT,
-            };
             ui.texture = core.device.createTexture(&.{
                 .size = img_size,
-                .format = .rgba8_unorm,
+                .format = switch(ui.atlas.format) {
+                    .rgba => gpu.Texture.Format.rgba8_unorm,
+                    else => @panic("TODO"),
+                },
                 .usage = .{
                     .texture_binding = true,
                     .copy_dst = true,
                     .render_attachment = true,
                 },
             });
-
+            first_init = true;
+        }
+        if(ui.atlas.modified or first_init) {
+            ui.atlas.modified = false;
             const data_layout = gpu.Texture.DataLayout{
-                .bytes_per_row = UI_TEX_IMAGE_WIDTH * 4, // width * channels
-                .rows_per_image = UI_TEX_IMAGE_HEIGHT, // height
+                .bytes_per_row = ui.atlas.size * ui.atlas.format.depth(),
+                .rows_per_image = ui.atlas.size, // height
             };
-            App.instance.queue.writeTexture(&.{ .texture = ui.texture.? }, &data_layout, &img_size, &[UI_TEX_IMAGE_WIDTH * UI_TEX_IMAGE_HEIGHT * 4]u8{
-                0, 0, 0, 0,
-            });
+            App.instance.queue.writeTexture(&.{ .texture = ui.texture.? }, &data_layout, &img_size, ui.atlas.data);
         }
 
         var vertices = std.ArrayList(App.Vertex).init(core.allocator);

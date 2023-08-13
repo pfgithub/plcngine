@@ -141,7 +141,7 @@ pub const Render = struct {
     window_size: Vec2f32 = .{0, 0},
 
     uniform_buffer: ?*gpu.Buffer = null,
-    ui: interface.UI = .{},
+    ui: interface.UI,
     world: *World,
     app: *App,
 
@@ -151,7 +151,9 @@ pub const Render = struct {
             .alloc = alloc,
             .world = world,
             .app = app,
+            .ui = undefined,
         };
+        try interface.UI.init(&render.ui);
         return render;
     }
     pub fn destroy(render: *Render) void {
