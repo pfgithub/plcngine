@@ -8,6 +8,10 @@ const App = @import("main2.zig");
 const core = @import("core");
 const render = @import("render.zig");
 
+const msdf = @cImport({
+    @cInclude("msdfgen.h");
+});
+
 const x = math.x;
 const y = math.y;
 const z = math.z;
@@ -140,3 +144,34 @@ pub fn sample(vertices: *std.ArrayList(App.Vertex)) !void {
         .border = 2.0,
     }));
 }
+
+pub fn textSample() !void {
+    const font_data = @embedFile("data/NotoSans-Regular.ttf");
+
+    const ft: *msdf.FreetypeHandle = msdf.cz_initializeFreetype() orelse return error.InitializeFreetype;
+    defer msdf.cz_deinitializeFreetype(ft);
+
+    const font: *msdf.FontHandle = msdf.cz_loadFontData(ft, @ptrCast(font_data.ptr), @intCast(font_data.len)) orelse return error.LoadFont;
+    defer msdf.cz_destroyFont(font);
+
+    // Shape shape;
+    // if (loadGlyph(shape, font, 'A')) {
+    //     shape.normalize();
+    //     //                      max. angle
+    //     edgeColoringSimple(shape, 3.0);
+    //     //           image width, height
+    //     Bitmap<float, 3> msdf(32, 32);
+    //     //                     range, scale, translation
+    //     generateMSDF(msdf, shape, 4.0, 1.0, Vector2(4.0, 4.0));
+    //     savePng(msdf, "output.png");
+    // }
+}
+
+// rendering:
+// opaque:
+// - any order, write to depth buffer
+// transparent:
+// - back to front, switch shader programs in the middle if needed.
+
+// text shadows & outlines:
+// - if we add a regular sdf to the alpha channel, we could use that for shadows and outlines
