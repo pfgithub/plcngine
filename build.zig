@@ -52,8 +52,7 @@ pub fn build(b: *std.Build) !void {
         "bun", "src/zix_compiler.ts", "src",
     });
 
-    mach.mach_glfw_import_path = "mach.mach_core.mach_gpu.mach_gpu_dawn.mach_glfw";
-    mach.harfbuzz_import_path = "mach.mach_freetype.harfbuzz";
+    mach.mach_glfw_import_path = "mach.mach_core.mach_glfw";
     const app = try mach.App.init(b, .{
         .name = "plcngine",
         .src = "src/main2.zig",
@@ -61,8 +60,12 @@ pub fn build(b: *std.Build) !void {
         .deps = &[_]std.build.ModuleDependency{},
         .optimize = optimize,
     });
+    app.compile.linkLibrary(b.dependency("mach_freetype.freetype", .{
+        .target = target,
+        .optimize = optimize,
+    }).artifact("freetype"));
     try linkMsdfGen(b, app.compile);
-    try app.link(.{});
+    try app.link();
     app.compile.step.dependOn(&codegen_step.step);
 
     const run_step = b.step("run", "Run the app");

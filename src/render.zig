@@ -205,7 +205,7 @@ pub const Render = struct {
             render.uniform_buffer = core.device.createBuffer(&.{
                 .usage = .{ .copy_dst = true, .uniform = true },
                 .size = @sizeOf(App.UniformBufferObject),
-                .mapped_at_creation = false,
+                .mapped_at_creation = .false,
             });
         }
         encoder.writeBuffer(render.uniform_buffer.?, 0, &[_]App.UniformBufferObject{.{
@@ -285,7 +285,7 @@ pub const Render = struct {
         if(cri.vertex_buffer == null) cri.vertex_buffer = core.device.createBuffer(&.{
             .usage = .{ .copy_dst = true, .vertex = true },
             .size = @sizeOf(App.Vertex) * vertices.len,
-            .mapped_at_creation = false,
+            .mapped_at_creation = .false,
         });
         encoder.writeBuffer(cri.vertex_buffer.?, 0, vertices);
 

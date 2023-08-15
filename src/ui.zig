@@ -93,7 +93,7 @@ pub const UI = struct {
         ui.vertex_buffer = core.device.createBuffer(&.{
             .usage = .{ .copy_dst = true, .vertex = true },
             .size = @sizeOf(App.Vertex) * vertices.items.len,
-            .mapped_at_creation = false,
+            .mapped_at_creation = .false,
         });
         encoder.writeBuffer(ui.vertex_buffer.?, 0, vertices.items);
 
