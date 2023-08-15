@@ -1,20 +1,30 @@
 #pragma ONCE
 
+typedef struct cz_Bitmap3f cz_Bitmap3f;
+typedef struct cz_Shape cz_Shape;
+
 #ifdef MSDFGEN_IMPL_CPP
 
 #define BODY(x) x
 
-#include "msdfgen/msdfgen.h"
-#include "msdfgen/msdfgen-ext.h"
+#include "msdfgen.h"
+#include "ext/import-font.h"
 
 using namespace msdfgen;
 
 extern "C" {
 
+struct cz_Bitmap3f {
+    Bitmap<float, 3> instance;
+};
+struct cz_Shape {
+    Shape instance;
+};
+
 #else
 
 #define BODY(x) ;
-typedef struct FreeTypeHandle FreeTypeHandle;
+typedef struct FreetypeHandle FreetypeHandle;
 typedef struct FontHandle FontHandle;
 typedef struct GlyphIndex GlyphIndex;
 typedef struct Shape Shape;
@@ -27,17 +37,51 @@ FreetypeHandle* cz_initializeFreetype(void) BODY({
 void cz_deinitializeFreetype(FreetypeHandle* ft) BODY({
     return deinitializeFreetype(ft);
 })
-FontHandle* cz_loadFontData(FreeTypeHandle* ft, byte* data, int length) BODY({
+FontHandle* cz_loadFontData(FreetypeHandle* ft, byte* data, int length) BODY({
     return loadFontData(ft, data, length);
 })
-void cz_destroyFont(FreeTypeHandle* ft) BODY({
+void cz_destroyFont(FontHandle* ft) BODY({
     return destroyFont(ft);
 })
-bool cz_getGlyphIndex(GlyphIndex* glyphIndex, FontHandle* font, unicode_t unicode) BODY({
-    return getGlyphIndex(&glyphIndex, font, unicode);
-})
 bool cz_loadGlyph(Shape* output, FontHandle* font, unicode_t unicode, double* advance) BODY({
-    return loadGlyph(output, font, unicode, advance);
+    return loadGlyph(*output, font, unicode, advance);
+})
+
+#ifdef MSDFGEN_IMPL_CPP
+cz_Bitmap3f* cz_createBitmap3f(int width, int height) {
+    cz_Bitmap3f* result = new cz_Bitmap3f();
+    result->instance = Bitmap<float, 3>(width, height);
+    return result;
+}
+#else
+cz_Bitmap3f* cz_createBitmap3f(int width, int height);
+#endif
+void cz_destroyBitmap3f(cz_Bitmap3f* bitmap) BODY({
+    delete bitmap;
+})
+float* cz_bitmap3fPixels(cz_Bitmap3f* bitmap) BODY({
+    return bitmap->instance; // Bitmap<T, N>::operator T *() :: implicit coersion
+})
+int cz_bitmap3fWidth(cz_Bitmap3f* bitmap) BODY({
+    return bitmap->instance.width();
+})
+int cz_bitmap3fHeight(cz_Bitmap3f* bitmap) BODY({
+    return bitmap->instance.height();
+})
+
+#ifdef MSDFGEN_IMPL_CPP
+cz_Shape* cz_createShape() {
+    return new cz_Shape();
+}
+#else
+cz_Shape* cz_createShape();
+})
+#endif
+void cz_destroyShape(cz_Shape* shape) BODY({
+    delete shape;
+})
+void cz_shapeNormalize(cz_Shape* shape) BODY({
+    shape->instance.normalize();
 })
 
 #if false

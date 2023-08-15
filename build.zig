@@ -38,6 +38,8 @@ fn linkMsdfGen(b: *std.Build, app: *std.build.Step.Compile) !void {
 
         msdfgen_root ++ "/ext/import-font.cpp",
         // msdfgen_root ++ "/ext/resolve-shape-geometry.cpp",
+
+        "src/msdfgen_glue.cpp",
     }) |cpp_file| {
         app.addCSourceFile(.{.file = .{.path = cpp_file}, .flags = &.{}});
     }
