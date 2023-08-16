@@ -1,6 +1,7 @@
 #pragma once
 
-#include <cstdint>
+#include "stdint.h"
+#include "stdbool.h"
 
 #ifdef __cplusplus
 #include "msdfgen.h"
@@ -21,7 +22,7 @@ extern "C" {
 
 FreetypeHandle* cz_initializeFreetype(void);
 void cz_deinitializeFreetype(FreetypeHandle* ft);
-FontHandle* cz_loadFontData(FreetypeHandle* ft, uint8_t* data, int length);
+FontHandle* cz_loadFontData(FreetypeHandle* ft, const uint8_t* data, int length);
 void cz_destroyFont(FontHandle* ft);
 bool cz_loadGlyph(cz_Shape* output, FontHandle* font, uint32_t unicode, double* advance);
 
@@ -34,6 +35,8 @@ int cz_bitmap3fHeight(cz_Bitmap3f* bitmap);
 cz_Shape* cz_createShape();
 void cz_destroyShape(cz_Shape* shape);
 void cz_shapeNormalize(cz_Shape* shape);
+
+void cz_generateMSDF(cz_Bitmap3f* bitmap, const cz_Shape* shape, double scale_x, double scale_y, double translate_x, double translate_y, double range);
 
 #ifdef __cplusplus
 }

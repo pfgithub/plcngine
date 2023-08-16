@@ -9,7 +9,7 @@ const core = @import("core");
 const render = @import("render.zig");
 
 const msdf = @cImport({
-    @cInclude("msdfgen.h");
+    @cInclude("msdfgen_glue.h");
 });
 
 const x = math.x;
@@ -143,9 +143,22 @@ pub fn sample(vertices: *std.ArrayList(App.Vertex)) !void {
         .border_radius = 10.0,
         .border = 2.0,
     }));
+
+    try textSample();
+}
+
+fn once(comptime _: std.builtin.SourceLocation) bool {
+    const data = struct {
+        var activated: bool = false;
+    };
+    if(data.activated) return false;
+    data.activated = true;
+    return true;
 }
 
 pub fn textSample() !void {
+    if(!once(@src())) return;
+
     const font_data = @embedFile("data/NotoSans-Regular.ttf");
 
     const ft: *msdf.FreetypeHandle = msdf.cz_initializeFreetype() orelse return error.InitializeFreetype;
@@ -153,6 +166,27 @@ pub fn textSample() !void {
 
     const font: *msdf.FontHandle = msdf.cz_loadFontData(ft, @ptrCast(font_data.ptr), @intCast(font_data.len)) orelse return error.LoadFont;
     defer msdf.cz_destroyFont(font);
+
+    const shape: *msdf.cz_Shape = msdf.cz_createShape() orelse return error.LoadShape;
+    defer msdf.cz_destroyShape(shape);
+
+    var advance: f64 = undefined;
+    if(!msdf.cz_loadGlyph(shape, font, 'B', &advance)) return error.LoadGlyph;
+
+    msdf.cz_shapeNormalize(shape);
+
+   const bitmap: *msdf.cz_Bitmap3f = msdf.cz_createBitmap3f(16, 16) orelse return error.CreateBitmap;
+   defer msdf.cz_destroyBitmap3f(bitmap);
+
+   msdf.cz_generateMSDF(bitmap, shape, 1.0, 1.0, 4.0, 4.0, 4.0); // scale.x, scale.y, translation.x, translation.y, range
+
+   std.log.info("msdfgen success! {d} {d}", .{
+        msdf.cz_bitmap3fWidth(bitmap),
+        msdf.cz_bitmap3fHeight(bitmap),
+        // msdf.cz_bitmap3fData(bitmap),
+   });
+
+    // TODO: add to texture atlas & render
 
     // Shape shape;
     // if (loadGlyph(shape, font, 'A')) {
@@ -175,3 +209,12 @@ pub fn textSample() !void {
 
 // text shadows & outlines:
 // - if we add a regular sdf to the alpha channel, we could use that for shadows and outlines
+// - use generateMTSDF for this
+
+// if msdf isn't good for small text / thin fonts / cjk / too much texture memory:
+// - freetype provides glyph rasterization, and mach has bindings for it
+// - we will need harfbuzz for layout eventually. mach also provides harfbuzz
+// - consider using msdf when larger than a given size
+
+// if msdf is too slow:
+// - https://github.com/nyyManni/msdfgl

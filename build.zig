@@ -13,6 +13,7 @@ fn linkMsdfGen(b: *std.Build, app: *std.build.Step.Compile) !void {
     _ = b;
     app.linkSystemLibrary("c++");
     app.addIncludePath(.{.path = msdfgen_root ++ "/"});
+    app.addIncludePath(.{.path = "src/"});
     for(&[_][]const u8{
         msdfgen_root ++ "/core/contour-combiners.cpp",
         msdfgen_root ++ "/core/Contour.cpp",
