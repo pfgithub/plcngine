@@ -92,6 +92,7 @@ pub fn build(b: *std.Build) !void {
         .optimize = optimize,
     });
     @import("mach_freetype").linkFreetype(mach_freetype_dep.builder, app.compile);
+    @import("mach_sysaudio").link(mach_sysaudio_dep.builder, app.compile);
     try linkMsdfGen(b, app.compile);
     app.compile.step.dependOn(&codegen_step.step);
 
