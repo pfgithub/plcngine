@@ -90,7 +90,7 @@ pub const World = struct {
     pub fn chunkFilename(buf: *[128]u8, pos: Vec2i) []const u8 {
         return std.fmt.bufPrint(
             buf,
-            "../../saves/world0/chunks/C[{x},{x}].plc_chunk",
+            "C_{x}_{x}.plc_chunk",
             .{pos[0], pos[1]},
         ) catch unreachable;
     }
@@ -154,12 +154,13 @@ pub const World = struct {
         const chunk_name_str = chunkFilename(&chunk_name_buffer, chunk.chunk_pos);
 
         file_not_found: {
-            const file = std.fs.cwd().openFile(chunk_name_str, .{.mode = .read_only}) catch |err| switch(err) {
+            const file = std.fs.cwd().openFile(chunk_name_str, .{.mode = .read_only}) catch |err| {
+                switch(err) {
                 error.FileNotFound => break :file_not_found,
                 else => return err,
+            }
             };
             defer file.close();
-            std.log.info("load chunk: {x}", .{chunk_pos});
 
             const reader = file.reader(); // TODO BufferedReader
             try chunk.deserialize(reader);
