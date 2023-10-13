@@ -4,7 +4,7 @@ const World = world_import.World;
 const Render = render_import.Render;
 const math = @import("math.zig");
 const FramerateCounter = @import("util/framerate_counter.zig");
-const sysaudio = mach.sysaudio;
+const sysaudio = @import("mach-sysaudio");
 
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
@@ -12,8 +12,7 @@ const vi2f = math.vi2f;
 const vf2i = math.vf2i;
 
 const std = @import("std");
-const mach = @import("mach");
-const core = @import("core");
+const core = @import("mach-core");
 const gpu = core.gpu;
 const zm = @import("zmath");
 const zigimg = @import("zigimg");
@@ -46,9 +45,9 @@ pub const UniformBufferObject = extern struct {
 };
 var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
-timer: mach.Timer,
-fps_timer: mach.Timer,
-window_title_timer: mach.Timer,
+// timer: mach.Timer,
+// fps_timer: mach.Timer,
+// window_title_timer: mach.Timer,
 pipeline: *gpu.RenderPipeline,
 queue: *gpu.Queue,
 texture: ?*gpu.Texture,
@@ -167,9 +166,9 @@ pub fn init(app: *App) !void {
 
     const queue = core.device.getQueue();
 
-    app.timer = try mach.Timer.start();
-    app.fps_timer = try mach.Timer.start();
-    app.window_title_timer = try mach.Timer.start();
+    // app.timer = try mach.Timer.start();
+    // app.fps_timer = try mach.Timer.start();
+    // app.window_title_timer = try mach.Timer.start();
     app.pipeline = pipeline;
     app.queue = queue;
     app.ih = .{};
@@ -462,12 +461,12 @@ pub fn update(app: *App) !bool {
     core.swap_chain.present();
     back_buffer_view.release();
 
-    if(true) {
-        const delta_time = app.fps_timer.read();
-        app.fps_timer.reset();
-        const title = try std.fmt.bufPrintZ(&app.title_buf, "Textured Cube [ FPS: {d:.0} ]", .{@floor(1 / delta_time)});
-        core.setTitle(title);
-    }
+    // if(true) {
+    //     const delta_time = app.fps_timer.read();
+    //     app.fps_timer.reset();
+    //     const title = try std.fmt.bufPrintZ(&app.title_buf, "Textured Cube [ FPS: {d:.0} ]", .{@floor(1 / delta_time)});
+    //     core.setTitle(title);
+    // }
 
     core.device.tick();
 

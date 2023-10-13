@@ -11,9 +11,8 @@
 // out using 1-log10(x*10) (google it to see how it looks, it's strong for most of the duration of
 // the note then fades out slowly.)
 const std = @import("std");
-const mach = @import("mach");
 const builtin = @import("builtin");
-const sysaudio = mach.sysaudio;
+const sysaudio = @import("mach-sysaudio");
 
 pub const App = @This();
 

@@ -1,10 +1,18 @@
 const std = @import("std");
-const mach = @import("mach");
+const mach_core = @import("mach_core");
 
 const build_runner = @import("root");
 const deps = build_runner.dependencies;
 
-const msdfgen_root = deps.build_root.msdfgen;
+const msdfgen_root = blk: {
+    const target_str: []const u8 = for (deps.root_deps) |root_dep| {
+        if (std.mem.eql(u8, root_dep[0], "msdfgen")) {
+            break root_dep[1];
+        }
+    } else @compileError("missing root dep 'msdfgen'");
+    const pkgval = @field(deps.packages, target_str);
+    break :blk pkgval.build_root;
+};
 
 // TODO: move libs from submodules to package manager; search in zig-cache
 // for dependencies.zig, use deps.something to find the prefix folder
@@ -55,21 +63,38 @@ pub fn build(b: *std.Build) !void {
         "bun", "src/zix_compiler.ts", "src",
     });
 
-    mach.mach_glfw_import_path = "mach.mach_core.mach_glfw";
-    const app = try mach.App.init(b, .{
+    const mach_core_dep = b.dependency("mach_core", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const mach_freetype_dep = b.dependency("mach_freetype", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const mach_sysaudio_dep = b.dependency("mach_sysaudio", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    const app = try mach_core.App.init(b, mach_core_dep.builder, .{
         .name = "plcngine",
         .src = "src/main2.zig",
         .target = target,
-        .deps = &[_]std.build.ModuleDependency{},
+        .deps = &[_]std.build.ModuleDependency{
+            std.Build.ModuleDependency{
+                .name = "mach-freetype",
+                .module = mach_freetype_dep.module("mach-freetype"),
+            },
+            std.Build.ModuleDependency{
+                .name = "mach-sysaudio",
+                .module = mach_sysaudio_dep.module("mach-sysaudio"),
+            },
+        },
         .optimize = optimize,
     });
-    app.compile.linkLibrary(b.dependency("mach_freetype.freetype", .{
-        .target = target,
-        .optimize = optimize,
-    }).artifact("freetype"));
     try linkMsdfGen(b, app.compile);
-    try app.link();
     app.compile.step.dependOn(&codegen_step.step);
+
+    if (b.args) |args| app.run.addArgs(args);
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&app.run.step);

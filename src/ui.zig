@@ -5,7 +5,6 @@ const World = world_import.World;
 const Chunk = world_import.Chunk;
 const CHUNK_SIZE = world_import.CHUNK_SIZE;
 const App = @import("main2.zig");
-const core = @import("core");
 const render = @import("render.zig");
 
 const msdf = @cImport({
@@ -17,8 +16,9 @@ const y = math.y;
 const z = math.z;
 const w = math.w;
 
-const mach = @import("mach");
-const gpu = mach.gpu;
+const core = @import("mach-core");
+const gpu = core.gpu;
+const Atlas = @import("vendor/mach_gfx_atlas.zig");
 
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
@@ -39,12 +39,12 @@ const Color = union(enum) {
 pub const UI = struct {
     vertex_buffer: ?*gpu.Buffer = null,
     bind_group: ?*gpu.BindGroup = null,
-    atlas: mach.Atlas,
+    atlas: Atlas,
     texture: ?*gpu.Texture = null,
 
     pub fn init(ui: *UI) !void {
         ui.* = .{
-            .atlas = try mach.Atlas.init(core.allocator, 2048, .rgba), // rgba? should it be grayscale?
+            .atlas = try Atlas.init(core.allocator, 2048, .rgba), // rgba? should it be grayscale?
         };
     }
 
