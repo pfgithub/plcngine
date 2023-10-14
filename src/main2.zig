@@ -321,11 +321,43 @@ fn appTick(app: *App) !void {
     try app.world.clearUnusedChunks();
     app.world.frame_index += 1;
 }
-const Controller = struct {
+
+const DrawTool = struct {
+    pen_color: u8 = 4,
     prev_world_pos: ?Vec2i = null,
-    fn update(controller: *Controller, app: *App) !void {
+
+    pub fn update(tool: *DrawTool, app: *App) !void {
         const render = app.render;
         const world = app.world;
+        const ih = &app.ih;
+
+        const mp = app.ih.mouse_pos orelse Vec2f32{-1, -1};
+
+        const world_pos = vf2i(render.screenToWorldPos(mp));
+        if(ih.mouse_held.get(.left) and ih.modsEql(.{})) {
+            if(tool.prev_world_pos == null) tool.prev_world_pos = world_pos;
+            var lp = math.LinePlotter.init(tool.prev_world_pos.?, world_pos);
+            while(lp.next()) |pos| {
+                try world.setPixel(pos, tool.pen_color);
+            }
+            tool.prev_world_pos = world_pos;
+        }else{
+            tool.prev_world_pos = null;
+        }
+
+        if(ih.frame.key_press.get(.zero)) tool.pen_color = 0;
+        if(ih.frame.key_press.get(.one)) tool.pen_color = 1;
+        if(ih.frame.key_press.get(.two)) tool.pen_color = 2;
+        if(ih.frame.key_press.get(.three)) tool.pen_color = 3;
+        if(ih.frame.key_press.get(.four)) tool.pen_color = 4;
+    }
+};
+
+const Controller = struct {
+    current_tool: DrawTool = .{},
+
+    fn update(controller: *Controller, app: *App) !void {
+        const render = app.render;
         const ih = &app.ih;
 
         const mp = app.ih.mouse_pos orelse Vec2f32{-1, -1};
@@ -361,18 +393,7 @@ const Controller = struct {
             render.center_offset -= ih.frame.mouse_delta / @as(Vec2f32, @splat(render.center_scale));
         }
 
-
-        const world_pos = vf2i(render.screenToWorldPos(mp));
-        if(ih.mouse_held.get(.left) and ih.modsEql(.{})) {
-            if(controller.prev_world_pos == null) controller.prev_world_pos = world_pos;
-            var lp = math.LinePlotter.init(controller.prev_world_pos.?, world_pos);
-            while(lp.next()) |pos| {
-                try world.setPixel(pos, 4);
-            }
-            controller.prev_world_pos = world_pos;
-        }else{
-            controller.prev_world_pos = null;
-        }
+        try controller.current_tool.update(app);
     }
 };
 
