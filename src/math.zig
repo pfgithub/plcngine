@@ -33,8 +33,8 @@ pub const LinePlotter = struct {
         const y0: i32 = start[1];
         const y1: i32 = end[1];
 
-        const dx: i32 = (std.math.absInt(x1 - x0) catch unreachable);
-        const dy: i32 = -(std.math.absInt(y1 - y0) catch unreachable);
+        const dx: i32 = @intCast(@abs(x1 - x0));
+        const dy: i32 = -@as(i32, @intCast(@abs(y1 - y0)));
         const sx: i32 = if(x0 < x1) 1 else -1;
         const sy: i32 = if(y0 < y1) 1 else -1;
         const err = dx + dy;

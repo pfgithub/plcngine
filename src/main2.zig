@@ -371,7 +371,7 @@ const Controller = struct {
             const mpos_before = render.screenToWorldPos(mp);
 
             const wheel: f32 = (mwheel_ray[0] + mwheel_ray[1]) / 120.0;
-            const zoom: f32 = std.math.pow(f32, 1 + @fabs(wheel) / 2, @as(f32, if(wheel > 0) 1 else -1));
+            const zoom: f32 = std.math.pow(f32, 1 + @abs(wheel) / 2, @as(f32, if(wheel > 0) 1 else -1));
             render.center_scale *= zoom;
             if(render.center_scale < 1.0) render.center_scale = 1.0;
             if(render.center_scale > 2048.0) render.center_scale = 2048.0;
