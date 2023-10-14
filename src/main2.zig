@@ -365,7 +365,7 @@ const Controller = struct {
         const mwheel_mul: Vec2f32 = .{20.0, 20.0};
         const mwheel_ray = ih.frame.mouse_scroll * mwheel_mul;
         if((ih.modsEql(.{.ctrl = true}) or ih.modsEql(.{.super = true})) and ih.frame.key_press.get(.s)) {
-            std.log.info("Save", .{});
+            try app.world.saveAll();
         }
         if(ih.modsEql(.{.ctrl = true}) or ih.modsEql(.{.alt = true})) {
             const mpos_before = render.screenToWorldPos(mp);
