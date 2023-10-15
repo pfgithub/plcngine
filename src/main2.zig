@@ -371,7 +371,7 @@ const Controller = struct {
             const wheel: f32 = (mwheel_ray[0] + mwheel_ray[1]) / 120.0;
             const zoom: f32 = std.math.pow(f32, 1 + @abs(wheel) / 2, @as(f32, if(wheel > 0) 1 else -1));
             render.center_scale *= zoom;
-            if(render.center_scale < 1.0) render.center_scale = 1.0;
+            if(render.center_scale < 0.5) render.center_scale = 0.5;
             if(render.center_scale > 2048.0) render.center_scale = 2048.0;
 
             const mpos_after = render.screenToWorldPos(mp);
@@ -381,6 +381,12 @@ const Controller = struct {
             render.center_offset -= Vec2f32{mwheel_ray[0] + mwheel_ray[1], 0} / @as(Vec2f32, @splat(render.center_scale));
         }else{
             render.center_offset -= mwheel_ray / @as(Vec2f32, @splat(render.center_scale));
+        }
+        if(ih.modsEql(.{.ctrl = true}) and ih.frame.key_press.get(.one)) {
+            render.center_scale = 1.0;
+        }
+        if(ih.modsEql(.{.ctrl = true}) and ih.frame.key_press.get(.two)) {
+            render.center_scale = 2.0;
         }
         if(ih.isCursorHidden()) {
             const mmove_vec = ih.frame.mouse_delta;
