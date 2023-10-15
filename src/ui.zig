@@ -139,7 +139,7 @@ pub fn sample(vertices: *std.ArrayList(App.Vertex)) !void {
     try vertices.appendSlice(&render.vertexRect(.{
         .ul = .{10, 10},
         .br = .{10 + @as(f32, @floatFromInt(final_size[0])), 10 + @as(f32, @floatFromInt(final_size[1]))},
-        .draw_colors = 0o33332,
+        .draw_colors = 0o22223,
         .border_radius = 10.0,
         .border = 2.0,
     }));
