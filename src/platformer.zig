@@ -71,10 +71,10 @@ pub const Player = struct {
                 dir[x] += 1;
             }
             if(controls.up_held) {
-                dir[y] += 1;
+                dir[y] -= 1;
             }
             if(controls.down_held) {
-                dir[y] -= 1;
+                dir[y] += 1;
             }
             if(dir[x] != 0 or dir[y] != 0) {
                 player.dash_key_used = true;
@@ -95,7 +95,7 @@ pub const Player = struct {
             player.vel_instant += Vec2f{1, 0};
         }
         if(!player.jump_button_pressed and controls.jump_held and player.on_ground <= 6 and math.magnitude(player.vel_dash) < 0.3) {
-            player.vel_gravity[y] = 2.2;
+            player.vel_gravity[y] = -2.2;
             player.on_ground = std.math.maxInt(u8);
             player.jump_button_pressed = true;
         }
@@ -179,7 +179,7 @@ pub const Player = struct {
             }
         }
         player.vel_dash *= @splat(@as(f32, 0.9));
-        if(math.magnitude(player.vel_dash) < 0.3) player.vel_gravity[y] -= 0.20;
+        if(math.magnitude(player.vel_dash) < 0.3) player.vel_gravity[y] += 0.20;
     }
     pub fn colliding(player: *Player, world: *World) !bool {
         const pos = player.posInt();
