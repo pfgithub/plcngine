@@ -390,9 +390,6 @@ const Controller = struct {
         const render = app.render;
         const ih = &app.ih;
 
-        render.center_offset = controller.player.pos - (vi2f(controller.player.size) / Vec2f32{2, 2});
-        render.center_scale = 4.0;
-
         try controller.player.update(app.world, &.{
             .up_held = ih.keys_held.get(.w),
             .left_held = ih.keys_held.get(.a),
@@ -402,6 +399,9 @@ const Controller = struct {
             .jump_held = ih.keys_held.get(.space),
             .dash_held = ih.mouse_held.get(.left),
         });
+
+        render.center_offset = controller.player.pos - (vi2f(controller.player.size) / Vec2f32{2, 2});
+        render.center_scale = 4.0;
     }
     fn updateEditMode(controller: *Controller, app: *App) !void {
         const render = app.render;
