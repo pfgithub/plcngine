@@ -36,7 +36,7 @@ pub const Player = struct {
     vel_gravity: Vec2f = Vec2f{0, 0},
     vel_instant: Vec2f = Vec2f{0, 0},
     vel_dash: Vec2f = Vec2f{0, 0},
-    size: Vec2i = Vec2i{4, 4},
+    size: Vec2i = Vec2i{8, 8},
     on_ground: u8 = 0,
     dash_used: bool = false,
     disallow_noise: u8 = 0,
@@ -51,8 +51,8 @@ pub const Player = struct {
 
     pub fn posInt(player: Player) Vec2i {
         return Vec2i{
-            @intFromFloat(player.pos[x]),
-            @intFromFloat(player.pos[y]),
+            @intFromFloat(@floor(player.pos[x])),
+            @intFromFloat(@floor(player.pos[y])),
         };
     }
 
@@ -145,7 +145,7 @@ pub const Player = struct {
                 }else{
                     player.pos[y] -= step_y;
                     player.vel_gravity[y] = 0;
-                    if(step_y < 0) {
+                    if(step_y > 0) {
                         player.on_ground = 0;
                     }
                     break;
@@ -166,15 +166,15 @@ pub const Player = struct {
             player.dash_used = false;
             player.vel_instant_prev[x] *= 0.6;
             if(prev_on_ground != 0 and player.disallow_noise == 0) {
-                const volume_float = @min(@max(-prev_y_vel / 10.0 * 100.0, 0), 100);
+                const volume_float = @min(@max(prev_y_vel / 10.0 * 100.0, 0), 100);
                 if(volume_float > 5) {
                     playSound(.falling_wind, volume_float);
                 }
             }
         }else{
             player.vel_instant_prev[x] *= 0.8;
-            if(-player.vel_gravity[y] > 5 and player.disallow_noise == 0) {
-                const volume = @max(@min((-player.vel_gravity[y] - 5) / 15, 1.0), 0.0) * 100;
+            if(player.vel_gravity[y] > 5 and player.disallow_noise == 0) {
+                const volume = @max(@min((player.vel_gravity[y] - 5) / 15, 1.0), 0.0) * 100;
                 playSound(.hit_ground, volume);
             }
         }

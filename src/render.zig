@@ -433,9 +433,9 @@ const RenderOverlay = struct {
         const player_size = vi2f(player.size);
         const vertices: *const [VERTICES_LEN]App.Vertex = &vertexRect(.{
             .ul = parent_render.worldPosToScreenPos( player.pos ),
-            .ur = parent_render.worldPosToScreenPos( player.pos + Vec2f32{player_size[x], 0} ),
-            .bl = parent_render.worldPosToScreenPos( player.pos + Vec2f32{0, player_size[y]} ),
-            .br = parent_render.worldPosToScreenPos( player.pos + Vec2f32{player_size[x], player_size[y]} ),
+            .ur = parent_render.worldPosToScreenPos( player.pos + Vec2f32{player_size[x] - 1, 0} ),
+            .bl = parent_render.worldPosToScreenPos( player.pos + Vec2f32{0, player_size[y] - 1} ),
+            .br = parent_render.worldPosToScreenPos( player.pos + Vec2f32{player_size[x] - 1, player_size[y] - 1} ),
             .draw_colors = 0o07743210,
         });
 
