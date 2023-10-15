@@ -360,12 +360,15 @@ const Controller = struct {
         }
 
         if(controller.play_mode) {
-            try controller.updatePlayMode(app);
-        }else {
             try controller.updateEditMode(app);
         }
     }
-    fn updatePlayMode(controller: *Controller, app: *App) !void {
+    fn tick(controller: *Controller, app: *App) !void {
+        if(controller.play_mode) {
+            try controller.tickPlayMode(app);
+        }
+    }
+    fn tickPlayMode(controller: *Controller, app: *App) !void {
         const render = app.render;
         const ih = &app.ih;
 
@@ -467,6 +470,7 @@ pub fn update(app: *App) !bool {
             else => {},
         }
     }
+    try app.controller.tick(app);
 
     if(app.texture == null) {
         if(app.texture != null) unreachable;
