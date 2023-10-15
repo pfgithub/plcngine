@@ -195,3 +195,17 @@ pub const World = struct {
         return @divFloor(world_pos, Vec2i{CHUNK_SIZE, CHUNK_SIZE});
     }
 };
+
+pub const Operation = union(enum) {
+    set_pixels: SetPixels,
+    
+    /// for eg lines and whatever where there's not huge regions to copy
+    pub const SetPixels = struct {
+        prev_pixels: []SetPixels,
+        next_pixels: []SetPixels,
+    };
+    pub const SetPixel = struct {
+        pos: Vec2i,
+        value: u8,
+    };
+};
