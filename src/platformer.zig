@@ -15,6 +15,7 @@ fn playSound(sound: Sound, volume: f32) void {
     _ = sound;
 }
 fn getCollisionPixel(world: *World, pos: Vec2i) !bool {
+    std.log.info("collisoin pixel {d}", .{pos});
     const result = try world.getPixel(pos);
     return switch(result) {
         1 => true,

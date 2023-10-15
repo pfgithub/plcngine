@@ -419,6 +419,9 @@ const Controller = struct {
         if(ih.frame.key_press.get(.q) and ih.modsEql(.{})) {
             controller.player.pos = render.screenToWorldPos(mp);
         }
+        if(ih.frame.key_press.get(.w) and ih.modsEql(.{})) {
+            std.log.info("{d}", .{render.screenToWorldPos(mp)});
+        }
 
         const mwheel_mul: Vec2f32 = .{20.0, 20.0};
         const mwheel_ray = ih.frame.mouse_scroll * mwheel_mul;
