@@ -7,11 +7,15 @@ pub const w = 3;
 pub const Vec2i = @Vector(2, i32);
 pub const Vec2f32 = @Vector(2, f32);
 pub fn vi2f(vi: Vec2i) Vec2f32 {
-    return .{@floatFromInt(vi[0]), @floatFromInt(vi[1])};
+    return .{@floatFromInt(vi[x]), @floatFromInt(vi[y])};
 }
 pub fn vf2i(vfv: Vec2f32) Vec2i {
     const vf = @floor(vfv);
-    return .{@intFromFloat(vf[0]), @intFromFloat(vf[1])};
+    return .{@intFromFloat(vf[x]), @intFromFloat(vf[y])};
+}
+
+pub fn magnitude(vec: Vec2f32) f32 {
+    return @sqrt(vec[x] * vec[x] + vec[y] * vec[y]);
 }
 
 pub const LinePlotter = struct {
