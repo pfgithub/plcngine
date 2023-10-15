@@ -10,6 +10,9 @@ pen_primary_color: u8 = 4,
 pen_secondary_color: u8 = 0,
 prev_world_pos: ?Vec2i = null,
 
+// tool: click & drag : draws to the overlay & presence
+// on release, commit the action to the world
+
 pub fn update(tool: *DrawTool, app: *App) !void {
     const render = app.render;
     const world = app.world;
