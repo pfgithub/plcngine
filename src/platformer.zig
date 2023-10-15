@@ -46,7 +46,7 @@ pub const Player = struct {
     dash_key_used: bool = false,
 
     abilities: struct {
-        dash_unlocked: bool = false,
+        dash_unlocked: bool = true,
     } = .{},
 
     pub fn posInt(player: Player) Vec2i {

@@ -370,7 +370,8 @@ const Controller = struct {
         if(controller.timer == null) {
             controller.timer = try std.time.Timer.start();
         }
-        controller.ns += controller.timer.?.lap();
+        const delta_time = controller.timer.?.lap();
+        controller.ns += delta_time;
         const ns_per_frame = 16666666;
         for(0..4) |_| {
             if(controller.ns > ns_per_frame) {
@@ -380,14 +381,32 @@ const Controller = struct {
         } else {
             controller.ns = 0;
         }
+        try controller.updateView(delta_time, app);
     }
     fn tickNow(controller: *Controller, app: *App) !void {
         if(controller.play_mode) {
             try controller.tickPlayMode(app);
         }
     }
-    fn tickPlayMode(controller: *Controller, app: *App) !void {
+    fn updateView(controller: *Controller, delta_time_ns: u64, app: *App) !void {
         const render = app.render;
+
+        if(controller.play_mode) {
+            const target_offset = controller.player.pos - (vi2f(controller.player.size) / Vec2f32{2, 2});
+            const target_zoom = 4.0;
+
+            const offset_dist = render.center_offset - target_offset;
+            const zoom_dist = render.center_scale - target_zoom;
+
+            const delta_time_sec: f32 = @floatCast(@as(f64, @floatFromInt(delta_time_ns)) / 1e+9);
+
+            const delta = std.math.pow(f32, 0.05, delta_time_sec);
+
+            render.center_offset = offset_dist * Vec2f32{delta, delta} + target_offset;
+            render.center_scale = zoom_dist * delta + target_zoom;
+        }
+    }
+    fn tickPlayMode(controller: *Controller, app: *App) !void {
         const ih = &app.ih;
 
         try controller.player.update(app.world, &.{
@@ -399,9 +418,6 @@ const Controller = struct {
             .jump_held = ih.keys_held.get(.space),
             .dash_held = ih.mouse_held.get(.left),
         });
-
-        render.center_offset = controller.player.pos - (vi2f(controller.player.size) / Vec2f32{2, 2});
-        render.center_scale = 4.0;
     }
     fn updateEditMode(controller: *Controller, app: *App) !void {
         const render = app.render;
