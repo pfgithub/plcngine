@@ -337,6 +337,9 @@ const Controller = struct {
     play_mode: bool = false,
     player: Player = .{},
 
+    timer: ?std.time.Timer = null,
+    ns: u64 = 0,
+
     pub fn create(alloc: std.mem.Allocator) !*Controller {
         const controller = try alloc.create(Controller);
         errdefer alloc.destroy(controller);
@@ -359,11 +362,26 @@ const Controller = struct {
             controller.play_mode = !controller.play_mode;
         }
 
-        if(controller.play_mode) {
+        if(!controller.play_mode) {
             try controller.updateEditMode(app);
         }
     }
     fn tick(controller: *Controller, app: *App) !void {
+        if(controller.timer == null) {
+            controller.timer = try std.time.Timer.start();
+        }
+        controller.ns += controller.timer.?.lap();
+        const ns_per_frame = 16666666;
+        for(0..4) |_| {
+            if(controller.ns > ns_per_frame) {
+                controller.ns -= ns_per_frame;
+                try controller.tickNow(app);
+            }else break;
+        } else {
+            controller.ns = 0;
+        }
+    }
+    fn tickNow(controller: *Controller, app: *App) !void {
         if(controller.play_mode) {
             try controller.tickPlayMode(app);
         }
