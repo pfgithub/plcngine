@@ -57,7 +57,7 @@ pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, w
 
     var iter_count: usize = 0;
     while(setpixel_list.popOrNull()) |target| : (iter_count += 1) {
-        if(iter_count > world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE) {
+        if(iter_count > world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE * 2) {
             @panic("infinite loop");
         }
         chunk.setPixel(target, with_color);
