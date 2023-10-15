@@ -492,6 +492,7 @@ pub fn update(app: *App) !bool {
         }
     }
     try app.controller.tick(app);
+    try app.appTick();
 
     if(app.texture == null) {
         if(app.texture != null) unreachable;
@@ -508,9 +509,6 @@ pub fn update(app: *App) !bool {
         });
         app.texture_view = app.texture.?.createView(null);
     }
-
-    // TODO limit to 20tps:
-    try app.appTick();
 
     // switch (ev.key) {
     //     .space => return true,
