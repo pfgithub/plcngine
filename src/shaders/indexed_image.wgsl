@@ -93,6 +93,13 @@ fn frag_main(
     @location(10) border_l: f32,
 ) -> @location(0) vec4<f32> {
     var sample = textureSample(myTexture, mySampler, frag_uv);
+    // if the fragment pixel is fully contained within a screen pixel
+    // - good
+    // if the fragment pixel is partially contained within a screen pixel
+    // - mix in the surrounding eight pixels based on how much
+    // if the fragment pixel contains multiple screen pixels
+    // - mix in the surrounding eight pixels based on how much
+    // gl_fragCoord
 
     // there's a rounded rectangle sdf but I don't know it
 
