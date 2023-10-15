@@ -5,7 +5,9 @@ const Render = render_import.Render;
 const math = @import("math.zig");
 const FramerateCounter = @import("util/framerate_counter.zig");
 const sysaudio = @import("mach-sysaudio");
+const Tool = @import("tools/Tool.zig");
 const DrawTool = @import("tools/DrawTool.zig");
+const FillTool = @import("tools/FillTool.zig");
 
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
@@ -44,7 +46,6 @@ pub const UniformBufferObject = extern struct {
     screen_size: @Vector(2, f32),
     colors: [4]@Vector(4, f32),
 };
-var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
 // timer: mach.Timer,
 // fps_timer: mach.Timer,
@@ -60,7 +61,7 @@ title_buf: [32:0]u8,
 world: *World,
 render: *Render,
 ih: InputHelper,
-controller: Controller,
+controller: *Controller,
 frc: FramerateCounter,
 
 /// we want SSAA not MSAA. MSAA only runs the fragment shader once per pixel using the
@@ -89,7 +90,7 @@ pub fn init(app: *App) !void {
     app.render = try Render.create(core.allocator, app.world, app);
     errdefer app.render.destroy();
 
-    app.audio_ctx = try sysaudio.Context.init(null, gpa.allocator(), .{});
+    app.audio_ctx = try sysaudio.Context.init(null, core.allocator, .{});
     errdefer app.audio_ctx.deinit();
     try app.audio_ctx.refresh();
 
@@ -167,13 +168,15 @@ pub fn init(app: *App) !void {
 
     const queue = core.device.getQueue();
 
+    app.controller = try Controller.create(core.allocator);
+    errdefer app.controller.destroy();
+
     // app.timer = try mach.Timer.start();
     // app.fps_timer = try mach.Timer.start();
     // app.window_title_timer = try mach.Timer.start();
     app.pipeline = pipeline;
     app.queue = queue;
     app.ih = .{};
-    app.controller = .{};
     app.texture = null;
     app.texture_view = null;
     app.frc = FramerateCounter.init();
@@ -182,7 +185,6 @@ pub fn init(app: *App) !void {
 }
 
 pub fn deinit(app: *App) void {
-    defer _ = gpa.deinit();
     defer core.deinit();
 
     app.player.deinit();
@@ -190,6 +192,7 @@ pub fn deinit(app: *App) void {
     if(app.texture) |dt| dt.release();
     if(app.texture_view) |dtv| dtv.release();
     app.render.destroy();
+    app.controller.destroy();
     app.world.destroy();
 }
 
@@ -324,13 +327,38 @@ fn appTick(app: *App) !void {
 }
 
 const Controller = struct {
-    current_tool: DrawTool = .{},
+    alloc: std.mem.Allocator,
+    draw_tool_data: DrawTool = .{},
+    fill_tool_data: FillTool = .{},
+    current_tool: Tool,
+
+    pub fn create(alloc: std.mem.Allocator) !*Controller {
+        const controller = try alloc.create(Controller);
+        errdefer alloc.destroy(controller);
+        controller.* = .{
+            .alloc = alloc,
+            .current_tool = undefined,
+        };
+        controller.current_tool = Tool.wrap(DrawTool, &controller.draw_tool_data);
+        return controller;
+    }
+    pub fn destroy(controller: *Controller) void {
+        const alloc = controller.alloc;
+        alloc.destroy(controller);
+    }
 
     fn update(controller: *Controller, app: *App) !void {
         const render = app.render;
         const ih = &app.ih;
 
         const mp = app.ih.mouse_pos orelse Vec2f32{-1, -1};
+
+        if(ih.frame.key_press.get(.b) and ih.modsEql(.{})) {
+            controller.current_tool = Tool.wrap(DrawTool, &controller.draw_tool_data);
+        }
+        if(ih.frame.key_press.get(.f) and ih.modsEql(.{})) {
+            controller.current_tool = Tool.wrap(FillTool, &controller.fill_tool_data);
+        }
 
         const mwheel_mul: Vec2f32 = .{20.0, 20.0};
         const mwheel_ray = ih.frame.mouse_scroll * mwheel_mul;

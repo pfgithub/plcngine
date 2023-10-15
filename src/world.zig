@@ -25,10 +25,14 @@ pub const Chunk = struct {
         chunk.chunk_render_info.deinit();
     }
     fn itmIndex(offset: Vec2i) ?usize {
-        if(@reduce(.Or, offset < Vec2i{0, 0}) or @reduce(.Or, offset >= Vec2i{CHUNK_SIZE, CHUNK_SIZE})) {
-            return null;
-        }
+        if(!hasPixel(offset)) return null;
         return @intCast(offset[1] * CHUNK_SIZE + offset[0]);
+    }
+    pub fn hasPixel(offset: Vec2i) bool {
+        if(@reduce(.Or, offset < Vec2i{0, 0}) or @reduce(.Or, offset >= Vec2i{CHUNK_SIZE, CHUNK_SIZE})) {
+            return false;
+        }
+        return true;
     }
     pub fn getPixel(chunk: *const Chunk, offset: Vec2i) u8 {
         const index = itmIndex(offset) orelse unreachable;
@@ -174,21 +178,21 @@ pub const World = struct {
         return chunk;
     }
 
-    pub fn getPixel(world: *World, pos: Vec2i) !u8 {
+    pub fn getChunkAtPixel(world: *World, pos: Vec2i) !struct{*Chunk, Vec2i} {
         const target_chunk = worldPosToChunkPos(pos);
         const target_chunk_offset = target_chunk * Vec2i{CHUNK_SIZE, CHUNK_SIZE};
         const pos_offset = pos - target_chunk_offset;
         const chunk_value = try getOrLoadChunk(world, target_chunk);
 
-        return chunk_value.getPixel(pos_offset);
+        return .{chunk_value, pos_offset};
+    }
+    pub fn getPixel(world: *World, pos: Vec2i) !u8 {
+        const chunk, const offset = try world.getChunkAtPixel(pos);
+        return chunk.getPixel(offset);
     }
     pub fn setPixel(world: *World, pos: Vec2i, value: u8) !void {
-        const target_chunk = worldPosToChunkPos(pos);
-        const target_chunk_offset = target_chunk * Vec2i{CHUNK_SIZE, CHUNK_SIZE};
-        const pos_offset = pos - target_chunk_offset;
-        const chunk_value = try getOrLoadChunk(world, target_chunk);
-
-        return chunk_value.setPixel(pos_offset, value);
+        const chunk, const offset = try world.getChunkAtPixel(pos);
+        return chunk.setPixel(offset, value);
     }
 
     pub fn worldPosToChunkPos(world_pos: Vec2i) Vec2i {
@@ -197,7 +201,7 @@ pub const World = struct {
 };
 
 pub const Operation = union(enum) {
-    set_pixels: SetPixels,
+    set_pixels: SetPixels, // set_pixels should be similar to a run-length encoded set_area. maybe use that always?
     
     /// for eg lines and whatever where there's not huge regions to copy
     pub const SetPixels = struct {

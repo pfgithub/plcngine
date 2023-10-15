@@ -6,7 +6,7 @@ const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
 const vf2i = math.vf2i;
 
-pen_primary_color: u8 = 4,
+pen_primary_color: u8 = 1,
 pen_secondary_color: u8 = 0,
 prev_world_pos: ?Vec2i = null,
 
