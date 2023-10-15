@@ -14,8 +14,8 @@ fn playSound(sound: Sound, volume: f32) void {
     _ = volume;
     _ = sound;
 }
-fn getCollisionPixel(world: *const World, pos: Vec2i) bool {
-    const result = world.getPixel(pos);
+fn getCollisionPixel(world: *World, pos: Vec2i) !bool {
+    const result = try world.getPixel(pos);
     return switch(result) {
         1 => true,
         else => false,
@@ -56,9 +56,7 @@ pub const Player = struct {
         };
     }
 
-    fn update(world: *const World, player: *Player, controls: *const GameControls) Vec2f {
-        _ = world;
-        var world_scale = Vec2f{2, 2};
+    pub fn update(player: *Player, world: *World, controls: *const GameControls) !void {
         var flying = false;
 
         if(!controls.dash_held) {
@@ -105,11 +103,9 @@ pub const Player = struct {
 
         player.disallow_noise -|= 1;
 
-        if(!flying) player.updateNext();
-
-        return world_scale;
+        if(!flying) try player.updateNext(world);
     }
-    fn updateNext(player: *Player) void {
+    fn updateNext(player: *Player, world: *World) !void {
         player.vel_gravity = @min(Vec2f{100, 100}, player.vel_gravity);
         player.vel_gravity = @max(Vec2f{-100, -100}, player.vel_gravity);
 
@@ -122,14 +118,14 @@ pub const Player = struct {
         const prev_on_ground = player.on_ground;
         const prev_y_vel = vec_instant[y];
 
-        const step_x_count = @ceil(std.math.fabs(vec_instant[x])) * 2;
+        const step_x_count = @ceil(@abs(vec_instant[x])) * 2;
         const step_x = if(step_x_count == 0) @as(f32, 0) else vec_instant[x] / step_x_count;
         for(0..@intFromFloat(@ceil(step_x_count))) |_| {
             player.pos[x] += step_x;
-            if(player.colliding()) {
+            if(try player.colliding(world)) {
                 for([_]f32{-1, 1}) |v| {
                     player.pos[y] += v;
-                    if(!player.colliding()) break; // note: we should also decrease the velocity
+                    if(!(try player.colliding(world))) break; // note: we should also decrease the velocity
                     player.pos[y] -= v;
                 }else{
                     player.pos[x] -= step_x;
@@ -137,14 +133,14 @@ pub const Player = struct {
                 }
             }
         }
-        const step_y_count = @ceil(std.math.fabs(vec_instant[y])) * 2;
+        const step_y_count = @ceil(@abs(vec_instant[y])) * 2;
         const step_y = if(step_y_count == 0) @as(f32, 0) else vec_instant[y] / step_y_count;
         for(0..@intFromFloat(step_y_count)) |_| {
             player.pos[y] += step_y;
-            if(player.colliding()) {
+            if(try player.colliding(world)) {
                 for([_]f32{-1, 1}) |v| {
                     player.pos[x] += v;
-                    if(!player.colliding()) break; // note: we should also decrease the velocity
+                    if(!(try player.colliding(world))) break; // note: we should also decrease the velocity
                     player.pos[x] -= v;
                 }else{
                     player.pos[y] -= step_y;
@@ -160,7 +156,7 @@ pub const Player = struct {
         }
         if(step_y == 0) {
             player.pos[y] -= 1;
-            if(!player.colliding()) {
+            if(!(try player.colliding(world))) {
                 player.on_ground +|= 1;
             }
             player.pos[y] += 1;
@@ -185,31 +181,31 @@ pub const Player = struct {
         player.vel_dash *= @splat(@as(f32, 0.9));
         if(math.magnitude(player.vel_dash) < 0.3) player.vel_gravity[y] -= 0.20;
     }
-    pub fn colliding(player: *Player) bool {
+    pub fn colliding(player: *Player, world: *World) !bool {
         const pos = player.posInt();
         for(0..@intCast(player.size[x])) |x_offset| {
-            const collision = getCollisionPixel(pos + Vec2i{
+            const collision = try getCollisionPixel(world, pos + Vec2i{
                 @intCast(x_offset),
                 0,
             });
             if(collision) return true;
         }
         for(0..(@intCast(player.size[x]))) |x_offset| {
-            const collision = getCollisionPixel(pos + Vec2i{
+            const collision = try getCollisionPixel(world, pos + Vec2i{
                 @intCast(x_offset),
                 player.size[y] - 1,
             });
             if(collision) return true;
         }
         for(0..(@intCast(player.size[y] - 2))) |y_offset| {
-            const collision = getCollisionPixel(pos + Vec2i{
+            const collision = try getCollisionPixel(world, pos + Vec2i{
                 0,
                 @intCast(y_offset + 1),
             });
             if(collision) return true;
         }
         for(0..(@intCast(player.size[y] - 2))) |y_offset| {
-            const collision = getCollisionPixel(pos + Vec2i{
+            const collision = try getCollisionPixel(world, pos + Vec2i{
                 player.size[x] - 1,
                 @intCast(y_offset + 1),
             });

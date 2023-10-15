@@ -366,8 +366,21 @@ const Controller = struct {
         }
     }
     fn updatePlayMode(controller: *Controller, app: *App) !void {
-        _ = controller;
-        _ = app;
+        const render = app.render;
+        const ih = &app.ih;
+
+        render.center_offset = controller.player.pos - (vi2f(controller.player.size) / Vec2f32{2, 2});
+        render.center_scale = 4.0;
+
+        try controller.player.update(app.world, &.{
+            .up_held = ih.keys_held.get(.w),
+            .left_held = ih.keys_held.get(.a),
+            .down_held = ih.keys_held.get(.s),
+            .right_held = ih.keys_held.get(.d),
+
+            .jump_held = ih.keys_held.get(.space),
+            .dash_held = ih.mouse_held.get(.left),
+        });
     }
     fn updateEditMode(controller: *Controller, app: *App) !void {
         const render = app.render;

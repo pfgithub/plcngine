@@ -17,6 +17,11 @@ pub fn vf2i(vfv: Vec2f32) Vec2i {
 pub fn magnitude(vec: Vec2f32) f32 {
     return @sqrt(vec[x] * vec[x] + vec[y] * vec[y]);
 }
+pub fn normalize(vec: Vec2f32) Vec2f32 {
+    const scale = magnitude(vec);
+    if(scale == 0) return vec;
+    return vec / Vec2f32{scale, scale};
+}
 
 pub const LinePlotter = struct {
     x0: i32,
