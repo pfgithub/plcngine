@@ -8,7 +8,9 @@ const sysaudio = @import("mach-sysaudio");
 const Tool = @import("tools/Tool.zig");
 const DrawTool = @import("tools/DrawTool.zig");
 const FillTool = @import("tools/FillTool.zig");
+const platformer = @import("platformer.zig");
 
+const Player = platformer.Player;
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
 const vi2f = math.vi2f;
@@ -332,6 +334,9 @@ const Controller = struct {
     fill_tool_data: FillTool = .{},
     current_tool: Tool,
 
+    play_mode: bool = false,
+    player: Player = .{},
+
     pub fn create(alloc: std.mem.Allocator) !*Controller {
         const controller = try alloc.create(Controller);
         errdefer alloc.destroy(controller);
@@ -348,6 +353,23 @@ const Controller = struct {
     }
 
     fn update(controller: *Controller, app: *App) !void {
+        const ih = &app.ih;
+
+        if(ih.frame.key_press.get(.tab) and ih.modsEql(.{})) {
+            controller.play_mode = !controller.play_mode;
+        }
+
+        if(controller.play_mode) {
+            try controller.updatePlayMode(app);
+        }else {
+            try controller.updateEditMode(app);
+        }
+    }
+    fn updatePlayMode(controller: *Controller, app: *App) !void {
+        _ = controller;
+        _ = app;
+    }
+    fn updateEditMode(controller: *Controller, app: *App) !void {
         const render = app.render;
         const ih = &app.ih;
 

@@ -36,15 +36,23 @@ pub const RectOpts = struct {
     border_r: ?f32 = null,
     border_b: ?f32 = null,
     border_l: ?f32 = null,
+
+    uv_ul: ?Vec2f32 = null,
+    uv_br: ?Vec2f32 = null,
 };
 pub fn vertexRect(
     opts: RectOpts,
 ) [6]App.Vertex {
     const ul = opts.ul;
-    const ur = opts.ur orelse Vec2f32{opts.br[x], opts.ul[y]};
-    const bl = opts.bl orelse Vec2f32{opts.ul[x], opts.br[y]};
     const br = opts.br;
+    const ur = opts.ur orelse Vec2f32{br[x], ul[y]};
+    const bl = opts.bl orelse Vec2f32{ul[x], br[y]};
     const draw_colors = opts.draw_colors;
+
+    const uv_ul: Vec2f32 = opts.uv_ul orelse Vec2f32{0, 0};
+    const uv_br: Vec2f32 = opts.uv_br orelse Vec2f32{1, 1};
+    const uv_ur: Vec2f32 = Vec2f32{uv_br[x], uv_ul[y]};
+    const uv_bl: Vec2f32 = Vec2f32{uv_ul[x], uv_br[y]};
 
     const border_radius_ul = opts.border_radius_ul orelse opts.border_radius;
     const border_radius_ur = opts.border_radius_ur orelse opts.border_radius;
@@ -65,38 +73,38 @@ pub fn vertexRect(
 
     return [6]App.Vertex{
         .{
-            .pos = .{ ul[x], ul[y], 0, 1 }, .uv = .{ 0, 0 }, .rect_uv = .{ 0, 0 },
+            .pos = .{ ul[x], ul[y], 0, 1 }, .uv = uv_ul, .rect_uv = .{ 0, 0 },
             .draw_colors = draw_colors,
             .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
             .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
         .{
-            .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 },
+            .pos = .{ bl[x], bl[y], 0, 1 }, .uv = uv_bl, .rect_uv = .{ 0, 1 },
             .draw_colors = draw_colors,
             .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
             .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
         .{
-            .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 },
+            .pos = .{ ur[x], ur[y], 0, 1 }, .uv = uv_ur, .rect_uv = .{ 1, 0 },
             .draw_colors = draw_colors,
             .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
             .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
 
         .{
-            .pos = .{ bl[x], bl[y], 0, 1 }, .uv = .{ 0, 1 }, .rect_uv = .{ 0, 1 },
+            .pos = .{ bl[x], bl[y], 0, 1 }, .uv = uv_bl, .rect_uv = .{ 0, 1 },
             .draw_colors = draw_colors,
             .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
             .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
         .{
-            .pos = .{ br[x], br[y], 0, 1 }, .uv = .{ 1, 1 }, .rect_uv = .{ 1, 1 },
+            .pos = .{ br[x], br[y], 0, 1 }, .uv = uv_br, .rect_uv = .{ 1, 1 },
             .draw_colors = draw_colors,
             .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
             .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
         .{
-            .pos = .{ ur[x], ur[y], 0, 1 }, .uv = .{ 1, 0 }, .rect_uv = .{ 1, 0 },
+            .pos = .{ ur[x], ur[y], 0, 1 }, .uv = uv_ur, .rect_uv = .{ 1, 0 },
             .draw_colors = draw_colors,
             .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
             .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
@@ -129,6 +137,15 @@ pub const ChunkRenderInfo = struct {
     }
 };
 
+pub fn color(col: u32) @Vector(4, f32) {
+    return @Vector(4, f32){
+        @floatFromInt( (col & 0xFF000000) >> 24 ),
+        @floatFromInt( (col & 0x00FF0000) >> 16 ),
+        @floatFromInt( (col & 0x0000FF00) >> 8 ),
+        @floatFromInt( (col & 0x000000FF) >> 0 ),
+    } / @as(@Vector(4, f32), @splat(255.0));
+}
+
 pub const Render = struct {
     // renderChunk, renderEntity, renderWorld
     // for all entities of visible chunks : render entities
@@ -143,6 +160,7 @@ pub const Render = struct {
     ui: interface.UI,
     world: *World,
     app: *App,
+    overlay: RenderOverlay = .{},
 
     pub fn create(alloc: std.mem.Allocator, world: *World, app: *App) !*Render {
         const render = try alloc.create(Render);
@@ -166,10 +184,13 @@ pub const Render = struct {
         const scale: Vec2f32 = @splat(render.center_scale);
         return (screen_pos - wso2) / scale + render.center_offset;
     }
-    pub fn worldPosToScreenPos(render: *Render, world_pos: Vec2i) Vec2f32 {
+    pub fn worldPosIntToScreenPos(render: *Render, world_pos: Vec2i) Vec2f32 {
+        return worldPosToScreenPos(render, vi2f(world_pos));
+    }
+    pub fn worldPosToScreenPos(render: *Render, world_pos: Vec2f32) Vec2f32 {
         const wso2 = render.halfScreen();
         const scale: Vec2f32 = @splat(render.center_scale);
-        return (vi2f(world_pos) - render.center_offset) * scale + wso2;
+        return (world_pos - render.center_offset) * scale + wso2;
     }
     pub fn halfScreen(render: *Render) Vec2f32 {
         return render.window_size / @as(Vec2f32, @splat(2.0));
@@ -186,15 +207,6 @@ pub const Render = struct {
         const chunk_min = World.worldPosToChunkPos(xy_min);
         const chunk_max = World.worldPosToChunkPos(xy_max);
         return .{chunk_min, chunk_max};
-    }
-
-    fn color(col: u32) @Vector(4, f32) {
-        return @Vector(4, f32){
-            @floatFromInt( (col & 0xFF000000) >> 24 ),
-            @floatFromInt( (col & 0x00FF0000) >> 16 ),
-            @floatFromInt( (col & 0x0000FF00) >> 8 ),
-            @floatFromInt( (col & 0x000000FF) >> 0 ),
-        } / @as(@Vector(4, f32), @splat(255.0));
     }
 
     pub fn prepareApp(render: *Render,
@@ -218,6 +230,7 @@ pub const Render = struct {
         }});
 
         try render.prepareWorld(encoder);
+        try render.overlay.prepareOverlay(encoder, render);
         try render.ui.prepare(encoder, render.uniform_buffer.?);
     }
 
@@ -274,10 +287,10 @@ pub const Render = struct {
 
         const chunk_world_ul = chunk.chunk_pos * Vec2i{CHUNK_SIZE, CHUNK_SIZE};
         const vertices = &vertexRect(.{
-            .ul = render.worldPosToScreenPos( chunk_world_ul ),
-            .ur = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, 0} ),
-            .bl = render.worldPosToScreenPos( chunk_world_ul + Vec2i{0, CHUNK_SIZE} ),
-            .br = render.worldPosToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, CHUNK_SIZE} ),
+            .ul = render.worldPosIntToScreenPos( chunk_world_ul ),
+            .ur = render.worldPosIntToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, 0} ),
+            .bl = render.worldPosIntToScreenPos( chunk_world_ul + Vec2i{0, CHUNK_SIZE} ),
+            .br = render.worldPosIntToScreenPos( chunk_world_ul + Vec2i{CHUNK_SIZE, CHUNK_SIZE} ),
             .draw_colors = 0o07743210,
         });
 
@@ -317,6 +330,7 @@ pub const Render = struct {
         pass: *gpu.RenderPassEncoder,
     ) !void {
         try render.renderWorld(pass);
+        try render.overlay.renderOverlay(pass);
         try render.ui.render(pass);
     }
 
@@ -351,6 +365,114 @@ pub const Render = struct {
 
         pass.setVertexBuffer(0, cri.vertex_buffer.?, 0, @sizeOf(App.Vertex) * VERTICES_LEN);
         pass.setBindGroup(0, cri.bind_group.?, &.{});
+        pass.draw(VERTICES_LEN, 1, 0, 0);
+    }
+};
+
+const RenderOverlay = struct {
+    uniform_buffer: ?*gpu.Buffer = null,
+    gpu_texture: ?*gpu.Texture = null,
+    vertex_buffer: ?*gpu.Buffer = null,
+    bind_group: ?*gpu.BindGroup = null,
+    update_texture: bool = true,
+
+    const VERTICES_LEN = 6;
+
+    pub fn prepareOverlay(
+        render: *RenderOverlay,
+        encoder: *gpu.CommandEncoder,
+        parent_render: *Render,
+    ) !void {
+        if(render.uniform_buffer == null) {
+            render.uniform_buffer = core.device.createBuffer(&.{
+                .usage = .{ .copy_dst = true, .uniform = true },
+                .size = @sizeOf(App.UniformBufferObject),
+                .mapped_at_creation = .false,
+            });
+        }
+        encoder.writeBuffer(render.uniform_buffer.?, 0, &[_]App.UniformBufferObject{.{
+            .screen_size = parent_render.window_size,
+            .colors = .{
+                color(0x000000_FF),
+                color(0x444444_FF),
+                color(0xAAAAAA_FF),
+                color(0xFFFFFF_FF),
+            },
+        }});
+
+        const app = parent_render.app;
+        const img_size = gpu.Extent3D{ .width = 1, .height = 1 };
+        if(render.gpu_texture == null) {
+            render.gpu_texture = core.device.createTexture(&.{
+                .size = img_size,
+                .format = .r8_unorm, // alternatively: r8_uint
+                .usage = .{
+                    .texture_binding = true,
+                    .copy_dst = true,
+                    .render_attachment = true,
+                },
+            });
+        }
+        if(render.update_texture) {
+            const OVERLAY_TEXTURE_SIZE = 4;
+            render.update_texture = false;
+            const data_layout = gpu.Texture.DataLayout{
+                .bytes_per_row = OVERLAY_TEXTURE_SIZE * 1, // width * channels
+                .rows_per_image = OVERLAY_TEXTURE_SIZE, // height
+            };
+            const texture: [OVERLAY_TEXTURE_SIZE * OVERLAY_TEXTURE_SIZE]u8 = [_]u8{
+                1, 1, 1, 1,
+                1, 1, 1, 1,
+                1, 1, 1, 1,
+                1, 1, 1, 1,
+            };
+            app.queue.writeTexture(&.{ .texture = render.gpu_texture.? }, &data_layout, &img_size, &texture);
+        }
+
+        const player = &app.controller.player;
+        const player_size = vi2f(player.size);
+        const vertices: *const [VERTICES_LEN]App.Vertex = &vertexRect(.{
+            .ul = parent_render.worldPosToScreenPos( player.pos ),
+            .ur = parent_render.worldPosToScreenPos( player.pos + Vec2f32{player_size[x], 0} ),
+            .bl = parent_render.worldPosToScreenPos( player.pos + Vec2f32{0, player_size[y]} ),
+            .br = parent_render.worldPosToScreenPos( player.pos + Vec2f32{player_size[x], player_size[y]} ),
+            .draw_colors = 0o07743210,
+        });
+
+        if(render.vertex_buffer == null) render.vertex_buffer = core.device.createBuffer(&.{
+            .usage = .{ .copy_dst = true, .vertex = true },
+            .size = @sizeOf(App.Vertex) * vertices.len,
+            .mapped_at_creation = .false,
+        });
+        encoder.writeBuffer(render.vertex_buffer.?, 0, vertices);
+
+        const sampler = core.device.createSampler(&.{
+            .mag_filter = .nearest,
+            .min_filter = .nearest,
+        });
+        defer sampler.release();
+
+        const texture_view = render.gpu_texture.?.createView(&gpu.TextureView.Descriptor{});
+        defer texture_view.release();
+
+        if(render.bind_group) |prev_bg| prev_bg.release();
+        render.bind_group = core.device.createBindGroup(
+            &gpu.BindGroup.Descriptor.init(.{
+                .layout = app.pipeline.getBindGroupLayout(0),
+                .entries = &.{
+                    gpu.BindGroup.Entry.buffer(0, render.uniform_buffer.?, 0, @sizeOf(App.UniformBufferObject)),
+                    gpu.BindGroup.Entry.sampler(1, sampler),
+                    gpu.BindGroup.Entry.textureView(2, texture_view),
+                },
+            }),
+        );
+    }
+
+    pub fn renderOverlay(render: *RenderOverlay,
+        pass: *gpu.RenderPassEncoder,
+    ) !void {
+        pass.setVertexBuffer(0, render.vertex_buffer.?, 0, @sizeOf(App.Vertex) * VERTICES_LEN);
+        pass.setBindGroup(0, render.bind_group.?, &.{});
         pass.draw(VERTICES_LEN, 1, 0, 0);
     }
 };

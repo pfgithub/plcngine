@@ -29,7 +29,7 @@ const Vec2f32 = math.Vec2f32;
 const Vec2f = Vec2f32;
 const Vec2i = math.Vec2i;
 
-const Player = struct {
+pub const Player = struct {
     // safe as long as positions remain -16,777,217...16,777,217
     // maybe this should be a f64
     pos: Vec2f = Vec2f{100, -100},
@@ -47,7 +47,7 @@ const Player = struct {
 
     abilities: struct {
         dash_unlocked: bool = false,
-    },
+    } = .{},
 
     pub fn posInt(player: Player) Vec2i {
         return Vec2i{
