@@ -1,18 +1,25 @@
 const std = @import("std");
 const math = @import("math.zig");
+const controls_mod = @import("controls.zig");
+const GameControls = controls_mod.GameControls;
+const world_mod = @import("world.zig");
+const World = world_mod.World;
 
 const Sound = enum{
     hit_ground,
     falling_wind,
+    dash,
 };
 fn playSound(sound: Sound, volume: f32) void {
     _ = volume;
     _ = sound;
 }
-const PixelColor = enum{black, dark, light, white};
-fn getWorldPixel(pos: Vec2i) PixelColor {
-    _ = pos;
-    return .black;
+fn getCollisionPixel(world: *const World, pos: Vec2i) bool {
+    const result = world.getPixel(pos);
+    return switch(result) {
+        1 => true,
+        else => false,
+    };
 }
 
 const x = 0;
@@ -23,19 +30,24 @@ const Vec2f = Vec2f32;
 const Vec2i = math.Vec2i;
 
 const Player = struct {
-    pos: Vec2f = Vec2f{100, -100},
     // safe as long as positions remain -16,777,217...16,777,217
-    // given that our world is 1,600x1,600 that seems okay.
+    // maybe this should be a f64
+    pos: Vec2f = Vec2f{100, -100},
     vel_gravity: Vec2f = Vec2f{0, 0},
     vel_instant: Vec2f = Vec2f{0, 0},
     vel_dash: Vec2f = Vec2f{0, 0},
     size: Vec2i = Vec2i{4, 4},
     on_ground: u8 = 0,
     dash_used: bool = false,
-    jump_used: bool = false,
     disallow_noise: u8 = 0,
-
     vel_instant_prev: Vec2f = Vec2f{0, 0},
+
+    jump_button_pressed: bool = false,
+    dash_key_used: bool = false,
+
+    abilities: struct {
+        dash_unlocked: bool = false,
+    },
 
     pub fn posInt(player: Player) Vec2i {
         return Vec2i{
@@ -44,7 +56,60 @@ const Player = struct {
         };
     }
 
-    pub fn update(player: *Player) void {
+    fn update(world: *const World, player: *Player, controls: *const GameControls) Vec2f {
+        _ = world;
+        var world_scale = Vec2f{2, 2};
+        var flying = false;
+
+        if(!controls.dash_held) {
+            player.dash_key_used = false;
+        }
+        if(controls.dash_held and player.abilities.dash_unlocked and !player.dash_used and !player.dash_key_used) {
+            var dir = Vec2f{0, 0};
+            if(controls.left_held) {
+                dir[x] -= 1;
+            }
+            if(controls.right_held) {
+                dir[x] += 1;
+            }
+            if(controls.up_held) {
+                dir[y] += 1;
+            }
+            if(controls.down_held) {
+                dir[y] -= 1;
+            }
+            if(dir[x] != 0 or dir[y] != 0) {
+                player.dash_key_used = true;
+                dir = math.normalize(dir);
+                player.dash_used = true;
+                player.vel_dash = dir * @as(Vec2f, @splat(2.2));
+                player.vel_gravity = Vec2f{0, 0};
+                if(player.disallow_noise == 0) {
+                    playSound(.dash, 41);
+                    player.disallow_noise = 10;
+                }
+            }
+        }
+        if(controls.left_held) {
+            player.vel_instant += Vec2f{-1, 0};
+        }
+        if(controls.right_held) {
+            player.vel_instant += Vec2f{1, 0};
+        }
+        if(!player.jump_button_pressed and controls.jump_held and player.on_ground <= 6 and math.magnitude(player.vel_dash) < 0.3) {
+            player.vel_gravity[y] = 2.2;
+            player.on_ground = std.math.maxInt(u8);
+            player.jump_button_pressed = true;
+        }
+        if(!controls.jump_held) player.jump_button_pressed = false;
+
+        player.disallow_noise -|= 1;
+
+        if(!flying) player.updateNext();
+
+        return world_scale;
+    }
+    fn updateNext(player: *Player) void {
         player.vel_gravity = @min(Vec2f{100, 100}, player.vel_gravity);
         player.vel_gravity = @max(Vec2f{-100, -100}, player.vel_gravity);
 
@@ -100,7 +165,6 @@ const Player = struct {
             }
             player.pos[y] += 1;
         }
-        // player.vel_instant_prev = player.vel_instant;
         player.vel_instant = Vec2f{0, 0};
         if(player.on_ground == 0) {
             player.dash_used = false;
@@ -124,32 +188,32 @@ const Player = struct {
     pub fn colliding(player: *Player) bool {
         const pos = player.posInt();
         for(0..@intCast(player.size[x])) |x_offset| {
-            const value = getWorldPixel(pos + Vec2i{
+            const collision = getCollisionPixel(pos + Vec2i{
                 @intCast(x_offset),
                 0,
             });
-            if(value == .black) return true;
+            if(collision) return true;
         }
         for(0..(@intCast(player.size[x]))) |x_offset| {
-            const value = getWorldPixel(pos + Vec2i{
+            const collision = getCollisionPixel(pos + Vec2i{
                 @intCast(x_offset),
                 player.size[y] - 1,
             });
-            if(value == .black) return true;
+            if(collision) return true;
         }
         for(0..(@intCast(player.size[y] - 2))) |y_offset| {
-            const value = getWorldPixel(pos + Vec2i{
+            const collision = getCollisionPixel(pos + Vec2i{
                 0,
                 @intCast(y_offset + 1),
             });
-            if(value == .black) return true;
+            if(collision) return true;
         }
         for(0..(@intCast(player.size[y] - 2))) |y_offset| {
-            const value = getWorldPixel(pos + Vec2i{
+            const collision = getCollisionPixel(pos + Vec2i{
                 player.size[x] - 1,
                 @intCast(y_offset + 1),
             });
-            if(value == .black) return true;
+            if(collision) return true;
         }
         return false;
     }
