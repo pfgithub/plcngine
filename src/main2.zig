@@ -382,6 +382,10 @@ const Controller = struct {
             controller.current_tool = Tool.wrap(FillTool, &controller.fill_tool_data);
         }
 
+        if(ih.frame.key_press.get(.q) and ih.modsEql(.{})) {
+            controller.player.pos = render.screenToWorldPos(mp);
+        }
+
         const mwheel_mul: Vec2f32 = .{20.0, 20.0};
         const mwheel_ray = ih.frame.mouse_scroll * mwheel_mul;
         if((ih.modsEql(.{.ctrl = true}) or ih.modsEql(.{.super = true})) and ih.frame.key_press.get(.s)) {
