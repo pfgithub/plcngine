@@ -466,7 +466,8 @@ const Controller = struct {
 
 pub fn update(app: *App) !bool {
     var iter = core.pollEvents();
-    while (iter.next()) |event| {
+    var events_count: usize = 0;
+    while (iter.next()) |event| : (events_count += 1) {
         app.ih.startFrame();
         try app.ih.update(event);
 
@@ -490,6 +491,14 @@ pub fn update(app: *App) !bool {
             },
             else => {},
         }
+    }
+    if(events_count == 0) {
+        app.ih.startFrame();
+        app.render.window_size = .{
+            @floatFromInt(core.descriptor.width),
+            @floatFromInt(core.descriptor.height),
+        };
+        try app.controller.update(app);
     }
     try app.controller.tick(app);
     try app.appTick();
