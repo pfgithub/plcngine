@@ -400,7 +400,7 @@ const Controller = struct {
 
             const delta_time_sec: f32 = @floatCast(@as(f64, @floatFromInt(delta_time_ns)) / 1e+9);
 
-            const delta = std.math.pow(f32, 0.05, delta_time_sec);
+            const delta = std.math.pow(f32, 0.01, delta_time_sec);
 
             render.center_offset = offset_dist * Vec2f32{delta, delta} + target_offset;
             render.center_scale = zoom_dist * delta + target_zoom;

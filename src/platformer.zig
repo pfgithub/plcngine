@@ -150,6 +150,7 @@ pub const Player = struct {
                     }
                     break;
                 }
+                if(step_y > 0) player.vel_gravity[y] *= 0.8;
             }else{
                 player.on_ground +|= 1;
             }
