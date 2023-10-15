@@ -95,7 +95,7 @@ pub const Player = struct {
             player.vel_instant += Vec2f{1, 0};
         }
         if(!player.jump_button_pressed and controls.jump_held and player.on_ground <= 6 and math.magnitude(player.vel_dash) < 0.3) {
-            player.vel_gravity[y] = -2.2;
+            player.vel_gravity[y] = -2.7;
             player.on_ground = std.math.maxInt(u8);
             player.jump_button_pressed = true;
         }
