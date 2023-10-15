@@ -58,11 +58,6 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const codegen_step = std.build.Step.Run.create(b, "codegen zix");
-    codegen_step.addArgs(&.{
-        "bun", "src/zix_compiler.ts", "src",
-    });
-
     const mach_core_dep = b.dependency("mach_core", .{
         .target = target,
         .optimize = optimize,
@@ -94,7 +89,6 @@ pub fn build(b: *std.Build) !void {
     @import("mach_freetype").linkFreetype(mach_freetype_dep.builder, app.compile);
     @import("mach_sysaudio").link(mach_sysaudio_dep.builder, app.compile);
     try linkMsdfGen(b, app.compile);
-    app.compile.step.dependOn(&codegen_step.step);
 
     if (b.args) |args| app.run.addArgs(args);
 
