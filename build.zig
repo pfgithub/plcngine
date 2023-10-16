@@ -98,4 +98,11 @@ pub fn build(b: *std.Build) !void {
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&app.run.step);
+
+    const exe = b.addExecutable(.{
+        .name = "network",
+        .root_source_file = .{.path = "src/testing/network.zig"},
+    });
+    exe.addModule("network", b.dependency("network", .{}).module("network"));
+    b.installArtifact(exe);
 }

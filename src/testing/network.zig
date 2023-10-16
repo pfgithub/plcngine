@@ -9,23 +9,22 @@ const network = @import("network");
 // using 100_00 yields 150 MB/s
 const buffer_size = 1000;
 
+// so question here is:
+// - how to accept multiple incoming connections
+// - how to make udp
+// - how to make a client
+
 pub fn main() !void {
     try network.init();
     defer network.deinit();
 
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
+    defer if(gpa.deinit() == .leak) @panic("memoer");
 
     const allocator = gpa.allocator();
+    _ = allocator;
 
-    var args_iter = try std.process.argsWithAllocator(allocator);
-    const exe_name = args_iter.next() orelse return error.MissingArgument;
-    defer allocator.free(exe_name);
-
-    const port_name = args_iter.next() orelse return error.MissingArgument;
-    defer allocator.free(port_name);
-
-    const port_number = try std.fmt.parseInt(u16, port_name, 10);
+    const port_number = try std.fmt.parseInt(u16, "4455", 10);
 
     var sock = try network.Socket.create(.ipv4, .tcp);
     defer sock.close();
