@@ -6,6 +6,10 @@
             .url = "https://github.com/Chlumsky/msdfgen/archive/052f5fffd78066fbd276504cfc099cca006274b5.tar.gz",
             .hash = "12205138bd6276b716921d78586aa272d11dc9e848086fb9cb56f41f6be7869b466e",
         },
+        .game_networking_sockets = .{
+            .url = "https://github.com/ValveSoftware/GameNetworkingSockets/archive/refs/tags/v1.4.1.tar.gz",
+            .hash = "1220556789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123",
+        },
         .mach_core = .{
             .url = "https://pkg.machengine.org/mach-core/d2b382d9698fc621d912ba1c693fe484d8e2178a.tar.gz",
             .hash = "1220c90fcb6a12a9659f4971e12ec53db017eb082abd3ebf4d1b8f703412c84228ae",
