@@ -88,6 +88,7 @@ pub fn build(b: *std.Build) !void {
     });
     @import("mach_freetype").linkFreetype(mach_freetype_dep.builder, app.compile);
     @import("mach_sysaudio").link(mach_sysaudio_dep.builder, app.compile);
+    app.compile.addModule("network", b.dependency("network", .{}).module("network"));
     try linkMsdfGen(b, app.compile);
 
     if (b.args) |args| app.run.addArgs(args);
