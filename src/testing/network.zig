@@ -14,6 +14,8 @@ const buffer_size = 1000;
 // - how to make udp
 // - how to make a client
 
+// https://github.com/mitchellh/libxev ?
+
 pub fn main() !void {
     try network.init();
     defer network.deinit();
