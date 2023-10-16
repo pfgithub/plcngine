@@ -70,6 +70,7 @@ pub fn build(b: *std.Build) !void {
         .target = target,
         .optimize = optimize,
     });
+    const xev = b.dependency("libxev", .{ .target = target, .optimize = optimize });
     const app = try mach_core.App.init(b, mach_core_dep.builder, .{
         .name = "plcngine",
         .src = "src/main2.zig",
@@ -84,8 +85,8 @@ pub fn build(b: *std.Build) !void {
                 .module = mach_sysaudio_dep.module("mach-sysaudio"),
             },
             std.Build.ModuleDependency{
-                .name = "network",
-                .module = b.dependency("network", .{}).module("network"),
+                .name = "xev",
+                .module = xev.module("xev"),
             },
         },
         .optimize = optimize,
@@ -101,8 +102,8 @@ pub fn build(b: *std.Build) !void {
 
     const exe = b.addExecutable(.{
         .name = "network",
-        .root_source_file = .{.path = "src/testing/network.zig"},
+        .root_source_file = .{.path = "src/testing/xevtest.zig"},
     });
-    exe.addModule("network", b.dependency("network", .{}).module("network"));
+    exe.addModule("xev", xev.module("xev"));
     b.installArtifact(exe);
 }

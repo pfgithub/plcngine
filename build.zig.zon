@@ -6,9 +6,9 @@
             .url = "https://github.com/Chlumsky/msdfgen/archive/052f5fffd78066fbd276504cfc099cca006274b5.tar.gz",
             .hash = "12205138bd6276b716921d78586aa272d11dc9e848086fb9cb56f41f6be7869b466e",
         },
-        .network = .{
-            .url = "https://github.com/MasterQ32/zig-network/archive/cdff53a2527598112a02b442045d4aef39a2e5e2.tar.gz",
-            .hash = "1220756789abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123",
+        .libxev = .{
+            .url = "https://github.com/mitchellh/libxev/archive/0c0ce75d7a82105a8a8bda1516a05fc149171917.tar.gz",
+            .hash = "12208070233b17de6be05e32af096a6760682b48598323234824def41789e993432c",
         },
         .mach_core = .{
             .url = "https://pkg.machengine.org/mach-core/d2b382d9698fc621d912ba1c693fe484d8e2178a.tar.gz",
