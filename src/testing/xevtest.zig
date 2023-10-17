@@ -8,11 +8,67 @@ pub fn main() !void {
     const w = try xev.Timer.init();
     defer w.deinit();
 
+    const address = try std.net.Address.parseIp4("127.0.0.1", 4455);
+    const tcp_server = try xev.TCP.init(address);
+
+    // Bind and listen
+    try tcp_server.bind(address);
+    try tcp_server.listen(1);
+
+    var c_accept: *xev.Completion = std.heap.page_allocator.create(xev.Completion) catch @panic("oom");
+    var user_data_1: u32 = 0;
+    tcp_server.accept(&loop, c_accept, u32, &user_data_1, &tcpserver_accept);
+
     // 5s timer
     var c: xev.Completion = undefined;
     w.run(&loop, &c, 5000, void, null, &timerCallback);
 
     try loop.run(.until_done);
+}
+
+fn tcpserver_accept(
+    user_data: ?*u32,
+    loop: *xev.Loop,
+    _: *xev.Completion,
+    r: xev.TCP.AcceptError!xev.TCP,
+) xev.CallbackAction {
+    _ = user_data;
+    const server_conn = r catch |e| {
+        std.log.err("connection failed: {}", .{e});
+        return .disarm;
+    };
+    std.log.info("connected server {any}", .{server_conn});
+
+    var recv_buf = std.heap.page_allocator.create([128]u8) catch @panic("oom");
+
+    var c_accept: *xev.Completion = std.heap.page_allocator.create(xev.Completion) catch @panic("oom");
+    server_conn.read(loop, c_accept, .{ .slice = recv_buf }, [128]u8, recv_buf, &tcpserver_read);
+
+    return .rearm;
+}
+
+fn tcpserver_read(
+    user_data_opt: ?*[128]u8,
+    _: *xev.Loop,
+    _: *xev.Completion,
+    _: xev.TCP,
+    _: xev.ReadBuffer,
+    r: xev.TCP.ReadError!usize,
+) xev.CallbackAction {
+    const read_len = r catch |e| {
+        std.log.err("read error: {}", .{e});
+        return .disarm;
+    };
+    const user_data = user_data_opt orelse {
+        std.log.err("user data null", .{});
+        return .disarm;
+    };
+
+    std.log.info("read value: '{s}'", .{
+        user_data.*[0..read_len]
+    });
+
+    return .rearm;
 }
 
 fn timerCallback(
