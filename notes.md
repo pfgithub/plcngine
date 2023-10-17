@@ -21,3 +21,9 @@ multiplayer
   the chunk. the client acknowledges which operations it has received.
 
 also operations can be extremely simple because we're not doing text
+
+entities: position, size
+
+and then an imgui inspector panel to configure stuff about the entity,
+can use a common data format to make it easy to do collaborative
+editing with
