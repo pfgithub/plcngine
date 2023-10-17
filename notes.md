@@ -19,3 +19,5 @@ multiplayer
   chunk
 - the server makes sure everyone has the same operations base in
   the chunk. the client acknowledges which operations it has received.
+
+also operations can be extremely simple because we're not doing text
