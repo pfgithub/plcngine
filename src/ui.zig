@@ -41,10 +41,18 @@ pub const UI = struct {
     bind_group: ?*gpu.BindGroup = null,
     atlas: Atlas,
     texture: ?*gpu.Texture = null,
+    text_render: TextRender,
 
     pub fn init(ui: *UI) !void {
+        var atlas = try Atlas.init(core.allocator, 2048, .rgba);
+        errdefer atlas.deinit(core.allocator);
+
+        var text_render = try TextRender.init(core.allocator);
+        errdefer text_render.deinit();
+
         ui.* = .{
-            .atlas = try Atlas.init(core.allocator, 2048, .rgba), // rgba? should it be grayscale?
+            .atlas = atlas,
+            .text_render = text_render,
         };
     }
 
@@ -59,6 +67,13 @@ pub const UI = struct {
         encoder: *gpu.CommandEncoder,
         uniform_buffer: *gpu.Buffer,
     ) !void {
+        // 1. render the interface
+        var vertices = std.ArrayList(App.Vertex).init(core.allocator);
+        defer vertices.deinit();
+
+        try sample(ui, &vertices);
+
+        // 2. update the buffers & images
         var first_init = false;
         const img_size = gpu.Extent3D{
             .width = ui.atlas.size,
@@ -87,11 +102,6 @@ pub const UI = struct {
             };
             App.instance.queue.writeTexture(&.{ .texture = ui.texture.? }, &data_layout, &img_size, ui.atlas.data);
         }
-
-        var vertices = std.ArrayList(App.Vertex).init(core.allocator);
-        defer vertices.deinit();
-
-        try sample(&vertices);
 
         if(ui.vertex_buffer) |b| b.release();
         ui.vertex_buffer = core.device.createBuffer(&.{
@@ -133,7 +143,7 @@ pub const UI = struct {
     }
 };
 
-pub fn sample(vertices: *std.ArrayList(App.Vertex)) !void {
+pub fn sample(ui: *UI, vertices: *std.ArrayList(App.Vertex)) !void {
     const final_size = Vec2i{80, 80};
 
     try vertices.appendSlice(&render.vertexRect(.{
@@ -144,7 +154,7 @@ pub fn sample(vertices: *std.ArrayList(App.Vertex)) !void {
         .border = 2.0,
     }));
 
-    try textSample();
+    try textSample(&ui.text_render);
 }
 
 fn once(comptime _: std.builtin.SourceLocation) bool {
@@ -156,35 +166,85 @@ fn once(comptime _: std.builtin.SourceLocation) bool {
     return true;
 }
 
-pub fn textSample() !void {
-    if(!once(@src())) return;
+const TextGlyph = struct {
+    bitmap: *msdf.cz_Bitmap3f,
+    fn init(text_render: *TextRender, glyph: u32) !TextGlyph {
+        const shape: *msdf.cz_Shape = msdf.cz_createShape() orelse return error.LoadShape;
+        defer msdf.cz_destroyShape(shape);
 
-    const font_data = @embedFile("data/NotoSans-Regular.ttf");
+        var advance: f64 = undefined;
+        if(!msdf.cz_loadGlyph(shape, text_render.font, glyph, &advance)) return error.LoadGlyph;
 
-    const ft: *msdf.FreetypeHandle = msdf.cz_initializeFreetype() orelse return error.InitializeFreetype;
-    defer msdf.cz_deinitializeFreetype(ft);
+        msdf.cz_shapeNormalize(shape);
 
-    const font: *msdf.FontHandle = msdf.cz_loadFontData(ft, @ptrCast(font_data.ptr), @intCast(font_data.len)) orelse return error.LoadFont;
-    defer msdf.cz_destroyFont(font);
+        const bitmap: *msdf.cz_Bitmap3f = msdf.cz_createBitmap3f(16, 16) orelse return error.CreateBitmap;
+        errdefer msdf.cz_destroyBitmap3f(bitmap);
 
-    const shape: *msdf.cz_Shape = msdf.cz_createShape() orelse return error.LoadShape;
-    defer msdf.cz_destroyShape(shape);
+        msdf.cz_generateMSDF(bitmap, shape, 1.0, 1.0, 4.0, 4.0, 4.0); // scale.x, scale.y, translation.x, translation.y, range
 
-    var advance: f64 = undefined;
-    if(!msdf.cz_loadGlyph(shape, font, 'B', &advance)) return error.LoadGlyph;
+        return .{
+            .bitmap = bitmap,
+        };
+    }
+    fn deinit(glyph: *TextGlyph) void {
+        msdf.cz_destroyBitmap3f(glyph.bitmap);
+    }
+};
+const TextRender = struct {
+    ft: *msdf.FreetypeHandle,
+    font: *msdf.FontHandle,
+    glyphs: std.AutoHashMap(u32, TextGlyph), // {font, size, glyph_u32} => Glyph
 
-    msdf.cz_shapeNormalize(shape);
+    pub fn init(alloc: std.mem.Allocator) !TextRender {
+        const font_data = @embedFile("data/NotoSans-Regular.ttf");
 
-   const bitmap: *msdf.cz_Bitmap3f = msdf.cz_createBitmap3f(16, 16) orelse return error.CreateBitmap;
-   defer msdf.cz_destroyBitmap3f(bitmap);
+        const ft: *msdf.FreetypeHandle = msdf.cz_initializeFreetype() orelse return error.InitializeFreetype;
+        errdefer msdf.cz_deinitializeFreetype(ft);
 
-   msdf.cz_generateMSDF(bitmap, shape, 1.0, 1.0, 4.0, 4.0, 4.0); // scale.x, scale.y, translation.x, translation.y, range
+        const font: *msdf.FontHandle = msdf.cz_loadFontData(ft, @ptrCast(font_data.ptr), @intCast(font_data.len)) orelse return error.LoadFont;
+        errdefer msdf.cz_destroyFont(font);
 
-   std.log.info("msdfgen success! {d} {d}", .{
-        msdf.cz_bitmap3fWidth(bitmap),
-        msdf.cz_bitmap3fHeight(bitmap),
-        // msdf.cz_bitmap3fData(bitmap),
-   });
+        var glyphs = std.AutoHashMap(u32, TextGlyph).init(alloc);
+        errdefer glyphs.deinit();
+
+        return .{
+            .ft = ft,
+            .font = font,
+            .glyphs = glyphs,
+        };
+    }
+
+    pub fn deinit(text_render: *TextRender) void {
+        var glyphs_iter = text_render.glyphs.iterator();
+        while(glyphs_iter.next()) |item| {
+            item.value_ptr.deinit();
+        }
+        text_render.glyphs.deinit();
+        msdf.cz_destroyFont(text_render.font);
+        msdf.cz_deinitializeFreetype(text_render.ft);
+    }
+
+    pub fn getOrRenderGlyph(text_render: *TextRender, glyph: u32) !TextGlyph {
+        const result = try text_render.glyphs.getOrPut(glyph);
+        if(!result.found_existing) {
+            errdefer if(!text_render.glyphs.remove(glyph)) unreachable;
+            result.value_ptr.* = try TextGlyph.init(text_render, glyph);
+        }
+        return result.value_ptr.*;
+    }
+};
+
+pub fn textSample(text_render: *TextRender) !void {
+    const glyph = try text_render.getOrRenderGlyph('B');
+
+    if(once(@src())) {
+        std.log.info("msdfgen success! {d} {d}", .{
+            msdf.cz_bitmap3fWidth(glyph.bitmap),
+            msdf.cz_bitmap3fHeight(glyph.bitmap),
+            // msdf.cz_bitmap3fData(bitmap),
+        });
+    }
+
 
     // TODO: add to texture atlas & render
 
