@@ -84,6 +84,91 @@ fn timerCallback(
    return .disarm;
 }
 
+fn demoUDP() void {
+    const testing = std.testing;
+
+    var loop = try xev.Loop.init(.{});
+    defer loop.deinit();
+
+    const address = try std.net.Address.parseIp4("127.0.0.1", 3132);
+    const server = try xev.UDP.init(address);
+    const client = try xev.UDP.init(address);
+
+    // Bind / Recv
+    try server.bind(address);
+    var c_read: xev.Completion = undefined;
+    var s_read: xev.UDP.State = undefined;
+    var recv_buf: [128]u8 = undefined;
+    var recv_len: usize = 0;
+    server.read(&loop, &c_read, &s_read, .{ .slice = &recv_buf }, usize, &recv_len, (struct {
+        fn callback(
+            ud: ?*usize,
+            _: *xev.Loop,
+            _: *xev.Completion,
+            _: *xev.UDP.State,
+            _: std.net.Address,
+            _: xev.UDP,
+            _: xev.ReadBuffer,
+            r: xev.UDP.ReadError!usize,
+        ) xev.CallbackAction {
+            ud.?.* = r catch unreachable;
+            return .disarm;
+        }
+    }).callback);
+
+    // Send
+    var send_buf = [_]u8{ 1, 1, 2, 3, 5, 8, 13 };
+    var c_write: xev.Completion = undefined;
+    var s_write: xev.UDP.State = undefined;
+    client.write(&loop, &c_write, &s_write, address, .{ .slice = &send_buf }, void, null, (struct {
+        fn callback(
+            _: ?*void,
+            _: *xev.Loop,
+            _: *xev.Completion,
+            _: *xev.UDP.State,
+            _: xev.UDP,
+            _: xev.WriteBuffer,
+            r: xev.UDP.WriteError!usize,
+        ) xev.CallbackAction {
+            _ = r catch unreachable;
+            return .disarm;
+        }
+    }).callback);
+
+    // Wait for the send/receive
+    try loop.run(.until_done);
+    try testing.expect(recv_len > 0);
+    try testing.expectEqualSlices(u8, &send_buf, recv_buf[0..recv_len]);
+
+    // Close
+    server.close(&loop, &c_read, void, null, (struct {
+        fn callback(
+            _: ?*void,
+            _: *xev.Loop,
+            _: *xev.Completion,
+            _: xev.UDP,
+            r: xev.UDP.CloseError!void,
+        ) xev.CallbackAction {
+            _ = r catch unreachable;
+            return .disarm;
+        }
+    }).callback);
+    client.close(&loop, &c_write, void, null, (struct {
+        fn callback(
+            _: ?*void,
+            _: *xev.Loop,
+            _: *xev.Completion,
+            _: xev.UDP,
+            r: xev.UDP.CloseError!void,
+        ) xev.CallbackAction {
+            _ = r catch unreachable;
+            return .disarm;
+        }
+    }).callback);
+
+    try loop.run(.until_done);
+}
+
 fn demo() void {
     const testing = std.testing;
 
