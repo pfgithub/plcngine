@@ -27,3 +27,5 @@ entities: position, size
 and then an imgui inspector panel to configure stuff about the entity,
 can use a common data format to make it easy to do collaborative
 editing with
+
+operations are tagged with either a chunk or an entity
