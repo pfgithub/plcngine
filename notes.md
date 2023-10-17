@@ -17,3 +17,5 @@ multiplayer
   insert it in sequence, then mutates your operation until it fits at the
   end of the sequence, then sends it out to everyone observing that
   chunk
+- the server makes sure everyone has the same operations base in
+  the chunk. the client acknowledges which operations it has received.
