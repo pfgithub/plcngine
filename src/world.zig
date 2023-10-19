@@ -241,23 +241,8 @@ const History = struct {
     // - step backwards through the operations list marking off pixels as modifiable
     // - undo the target operation but skip any blocked pixels
     // - apply this as a new operation
-
-    // note the case:
-    // a:
-    //     [.][.][ ]
-    // push:
-    //     [.][.][ ]
-    // undo a:
-    //     [ ][ ][ ]
-    // pull:
-    //     [ ][ ][,]
-    // ---
-    // b:
-    //     [.][,][,]
-    // b:
-    //     [ ][ ][,]
-
-    // ends up odd
+    // - instead of this, consider sending 'undo <id>' to the server and the server can do that
+    //   same thing but authoritatively. that seems better.
 };
 
 // operation id:
