@@ -211,10 +211,11 @@ pub const World = struct {
 // - loop backwards in the chunk setting a boolean chunk of flags of
 //   what has been touched then only affect those parts?
 const History = struct {
-    synchronized: std.mem.ArrayList(Operation),
-    local: std.mem.ArrayList(Operation),
-    undo_operations: std.mem.ArrayList(OperationID),
-    redo_operations: std.mem.ArrayList(OperationID),
+    synchronized: std.ArrayList(Operation),
+    local: std.ArrayList(Operation),
+    undo_operations: std.ArrayList(OperationID),
+    redo_operations: std.ArrayList(OperationID),
+    world: *World,
 
     // all client<->server communication is ordered
     // the client sends operations when the client draws them
@@ -223,11 +224,20 @@ const History = struct {
     // to add a new a local operation:
     // - append it to history.local
     // - apply the operation to the world
+    pub fn applyOperation(history: *History, operation: Operation) !void {
+        try history.local.append(operation);
+        operation.apply(history.world);
+    }
 
     // to add a new synchronized operation from a local operation:
     // - the local operation is guaranteed to be the first in the list
     // - shift it out of local, append it to synchronized
-    
+    pub fn recieveLocalServerOperation(history: *History, operation: Operation) !void {
+        try history.synchronized.append(operation);
+        errdefer _ = history.synchronized.pop();
+        _ = try history.local.orderedRemove(0);
+    }
+
     // to add a new synchronized operation not from a local operation:
     // - this means the local operation has not yet been applied
     // - this one is trouble and might freeze the app for a moment after
@@ -235,6 +245,33 @@ const History = struct {
     // - undo all local operations from the world
     // - apply the synchronized operation
     // - redo all local operations
+    pub fn recieveRemoteServerOperation(history: *History, operation: Operation) !void {
+        try history.synchronized.append(operation);
+
+        for(0..history.local.items.len) |inverse_index| {
+            const index = history.local.items.len - inverse_index - 1;
+            const local_item = &history.local.items[index];
+            local_item.unapply(history.world);
+        }
+        operation.apply(history.world);
+        for(history.local.items) |*local_item| {
+            local_item.apply(history.world);
+        }
+    }
+
+    pub fn canUndo(history: *History) bool {
+        _ = history;
+    }
+    pub fn applyUndo(history: *History) !void {
+        _ = history;
+    }
+    pub fn canRedo(history: *History) bool {
+        _ = history;
+    }
+    pub fn applyRedo(history: *History) !void {
+        _ = history;
+    }
+    
 
     // to undo an operation:
     // - this one is trouble
@@ -243,6 +280,9 @@ const History = struct {
     // - apply this as a new operation
     // - instead of this, consider sending 'undo <id>' to the server and the server can do that
     //   same thing but authoritatively. that seems better.
+
+    // this one is bad.
+    // one way to do it is unapply until the undo item. unapply the undo item. apply everything past the undo item.
 };
 
 // operation id:
@@ -251,7 +291,6 @@ const History = struct {
 // undo:
 // - reset any pixels to their previous values excluding any that have since been modified
 pub const Operation = struct {
-    parent: OperationID,
     value: OperationUnion,
 };
 const OperationID = union(enum) {
