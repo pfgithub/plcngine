@@ -89,10 +89,10 @@ pub const Player = struct {
             }
         }
         if(controls.left_held) {
-            player.vel_instant += Vec2f{-1, 0};
+            player.vel_instant += Vec2f{-1.5, 0};
         }
         if(controls.right_held) {
-            player.vel_instant += Vec2f{1, 0};
+            player.vel_instant += Vec2f{1.5, 0};
         }
         if(!player.jump_button_pressed and controls.jump_held and player.on_ground <= 6 and math.magnitude(player.vel_dash) < 0.3) {
             player.vel_gravity[y] = -2.7;
