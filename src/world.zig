@@ -276,6 +276,8 @@ const History = struct {
     // - unapply until the undo item
     // - unapply the undo item
     // - reapply everything after the undo item
+    // - on the client: get the difference and make that into an operation
+    // - on the server: get the difference and make that into an operation
     // how does this work with multiplayer?
 };
 
