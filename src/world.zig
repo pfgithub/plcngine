@@ -200,13 +200,19 @@ pub const World = struct {
     }
 };
 
+// operation id:
+// - server: 0 1 2 3 ...
+// - clients: 2.[client_id.0], 2.[client_id.1], ...
 pub const Operation = union(enum) {
-    set_pixels: SetPixels, // set_pixels should be similar to a run-length encoded set_area. maybe use that always?
-    
-    /// for eg lines and whatever where there's not huge regions to copy
+    set_pixels: SetPixels,
+    set_area: SetArea,
+
+    pub const SetArea = struct {
+        pixel: []const u8, // run-length encode? & transparency ignored
+        size: Vec2i,
+    };
     pub const SetPixels = struct {
-        prev_pixels: []SetPixels,
-        next_pixels: []SetPixels,
+        pixel: []const SetPixel,
     };
     pub const SetPixel = struct {
         pos: Vec2i,
