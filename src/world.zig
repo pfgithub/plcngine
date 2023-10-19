@@ -217,6 +217,8 @@ const History = struct {
     redo_operations: std.ArrayList(OperationID),
     world: *World,
 
+    unsent_messages: std.ArrayList(ClientToServerMessage),
+
     // all client<->server communication is ordered
     // the client sends operations when the client draws them
     // the server sends operations when they are applied on the server
@@ -226,6 +228,8 @@ const History = struct {
     // - apply the operation to the world
     pub fn applyOperation(history: *History, operation: Operation) !void {
         try history.local.append(operation);
+        errdefer _ = history.local.pop();
+        try history.unsent_messages.append(.{});
         operation.apply(history.world);
     }
 
@@ -301,8 +305,23 @@ const History = struct {
 // - clients: 2.[client_id.0], 2.[client_id.1], ...
 // undo:
 // - reset any pixels to their previous values excluding any that have since been modified
+pub const ClientToServerMessage = struct {
+    // apply_operation
+    // delete_operation [id: OperationID]
+    // insert_operation [after: OperationID]
+};
 pub const Operation = struct {
     value: OperationUnion,
+    id: OperationID,
+
+    pub fn apply(operation: Operation, world: *World) !void {
+        _ = world;
+        _ = operation;
+    }
+    pub fn unapply(operation: Operation, world: *World) !void {
+        _ = world;
+        _ = operation;
+    }
 };
 const OperationID = union(enum) {
     synchronized: usize,
