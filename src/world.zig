@@ -200,15 +200,33 @@ pub const World = struct {
     }
 };
 
+const History = struct {
+    synchronized: std.mem.ArrayList(Operation),
+    local: std.mem.ArrayList(Operation),
+    undo_operations: std.mem.ArrayList(OperationID),
+    redo_operations: std.mem.ArrayList(OperationID),
+};
+
 // operation id:
 // - server: 0 1 2 3 ...
 // - clients: 2.[client_id.0], 2.[client_id.1], ...
-pub const Operation = union(enum) {
+// undo:
+// - reset any pixels to their previous values excluding any that have since been modified
+pub const Operation = struct {
+    parent: OperationID,
+    value: OperationUnion,
+};
+const OperationID = union(enum) {
+    synchronized: usize,
+    local: usize,
+};
+const OperationUnion = union(enum) {
     set_pixels: SetPixels,
     set_area: SetArea,
 
     pub const SetArea = struct {
-        pixel: []const u8, // run-length encode? & transparency ignored
+        old_region: []const u8,
+        new_region: []const u8, // run-length encode? & transparency ignored
         size: Vec2i,
     };
     pub const SetPixels = struct {
@@ -216,6 +234,7 @@ pub const Operation = union(enum) {
     };
     pub const SetPixel = struct {
         pos: Vec2i,
-        value: u8,
+        old_value: u8,
+        new_value: u8,
     };
 };
