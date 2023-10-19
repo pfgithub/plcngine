@@ -200,11 +200,64 @@ pub const World = struct {
     }
 };
 
+// undo
+// a:
+//     [.][.][ ]
+// b:
+//     [.][,][,]
+// undo a:
+//     [ ][,][,]
+// how?
+// - loop backwards in the chunk setting a boolean chunk of flags of
+//   what has been touched then only affect those parts?
 const History = struct {
     synchronized: std.mem.ArrayList(Operation),
     local: std.mem.ArrayList(Operation),
     undo_operations: std.mem.ArrayList(OperationID),
     redo_operations: std.mem.ArrayList(OperationID),
+
+    // all client<->server communication is ordered
+    // the client sends operations when the client draws them
+    // the server sends operations when they are applied on the server
+
+    // to add a new a local operation:
+    // - append it to history.local
+    // - apply the operation to the world
+
+    // to add a new synchronized operation from a local operation:
+    // - the local operation is guaranteed to be the first in the list
+    // - shift it out of local, append it to synchronized
+    
+    // to add a new synchronized operation not from a local operation:
+    // - this means the local operation has not yet been applied
+    // - this one is trouble and might freeze the app for a moment after
+    //    a temporary network interruption
+    // - undo all local operations from the world
+    // - apply the synchronized operation
+    // - redo all local operations
+
+    // to undo an operation:
+    // - this one is trouble
+    // - step backwards through the operations list marking off pixels as modifiable
+    // - undo the target operation but skip any blocked pixels
+    // - apply this as a new operation
+
+    // note the case:
+    // a:
+    //     [.][.][ ]
+    // push:
+    //     [.][.][ ]
+    // undo a:
+    //     [ ][ ][ ]
+    // pull:
+    //     [ ][ ][,]
+    // ---
+    // b:
+    //     [.][,][,]
+    // b:
+    //     [ ][ ][,]
+
+    // ends up odd
 };
 
 // operation id:
