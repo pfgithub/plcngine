@@ -279,6 +279,14 @@ const History = struct {
     // - on the client: get the difference and make that into an operation
     // - on the server: get the difference and make that into an operation
     // how does this work with multiplayer?
+
+    // so basically for undo/redo we have to do the expensive thing once
+    // and then it's baked and cheap
+
+    // alternatively we can literally delete item form the history list. that
+    // would work too but then every client has to pay the price
+    // and we need both removeAt(index) and insertAt(index) for redo
+    // also maybe gets a bit painful with indices moving around so much
 };
 
 // operation id:
