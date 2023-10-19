@@ -271,18 +271,12 @@ const History = struct {
     pub fn applyRedo(history: *History) !void {
         _ = history;
     }
-    
 
-    // to undo an operation:
-    // - this one is trouble
-    // - step backwards through the operations list marking off pixels as modifiable
-    // - undo the target operation but skip any blocked pixels
-    // - apply this as a new operation
-    // - instead of this, consider sending 'undo <id>' to the server and the server can do that
-    //   same thing but authoritatively. that seems better.
-
-    // this one is bad.
-    // one way to do it is unapply until the undo item. unapply the undo item. apply everything past the undo item.
+    // undo:
+    // - unapply until the undo item
+    // - unapply the undo item
+    // - reapply everything after the undo item
+    // how does this work with multiplayer?
 };
 
 // operation id:
