@@ -281,12 +281,19 @@ const History = struct {
     // how does this work with multiplayer?
 
     // so basically for undo/redo we have to do the expensive thing once
-    // and then it's baked and cheap
+    // and then it's baked and cheap - no this isn't possible
 
     // alternatively we can literally delete item form the history list. that
     // would work too but then every client has to pay the price
     // and we need both removeAt(index) and insertAt(index) for redo
     // also maybe gets a bit painful with indices moving around so much
+
+    // consider history item deletion
+    // the client will tell the server: 'delete operation <x>'
+    // the server will:
+    // - check that the client owns this operation
+    // - delete it
+    // - send out the notice to all clients
 };
 
 // operation id:
