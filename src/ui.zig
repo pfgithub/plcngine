@@ -60,6 +60,7 @@ pub const UI = struct {
         if(ui.vertex_buffer) |b| b.release();
         if(ui.bind_group) |b| b.release();
         if(ui.texture) |b| b.release();
+        ui.text_render.deinit();
         ui.atlas.deinit(core.allocator);
     }
 
