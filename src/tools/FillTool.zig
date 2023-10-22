@@ -12,6 +12,8 @@ const vf2i = math.vf2i;
 fill_primary_color: u8 = 1,
 fill_secondary_color: u8 = 0,
 
+pub fn deinit(_: *FillTool) void {}
+
 pub fn update(tool: *FillTool, app: *App) !void {
     const render = app.render;
     const world = app.world;

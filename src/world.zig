@@ -355,7 +355,7 @@ const OperationID = union(enum) {
     synchronized: usize,
     local: usize,
 };
-const OperationUnion = union(enum) {
+pub const OperationUnion = union(enum) {
     set_pixels: SetPixels,
     set_area: SetArea,
 

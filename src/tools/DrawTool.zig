@@ -1,6 +1,9 @@
 const DrawTool = @This();
 const App = @import("../main2.zig");
 const math = @import("../math.zig");
+const world_mod = @import("../world.zig");
+const std = @import("std");
+const core = @import("mach-core");
 
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
@@ -8,10 +11,21 @@ const vf2i = math.vf2i;
 
 pen_primary_color: u8 = 1,
 pen_secondary_color: u8 = 0,
-prev_world_pos: ?Vec2i = null,
+current_line: ?CurrentLine = null,
+
+const CurrentLine = struct {
+    prev_world_pos: Vec2i,
+    set_pixels: std.ArrayList(world_mod.OperationUnion.SetPixel),
+};
 
 // tool: click & drag : draws to the overlay & presence
 // on release, commit the action to the world
+
+pub fn deinit(tool: *DrawTool) void {
+    if(tool.current_line) |*current_line| {
+        current_line.set_pixels.deinit();
+    }
+}
 
 pub fn update(tool: *DrawTool, app: *App) !void {
     const render = app.render;
@@ -24,14 +38,23 @@ pub fn update(tool: *DrawTool, app: *App) !void {
     // if(controls.pen_held_primary or controls.pen_held_secondary)
     if((ih.mouse_held.get(.left) or ih.mouse_held.get(.right)) and ih.modsEql(.{})) {
         const target_color = if(ih.mouse_held.get(.left)) tool.pen_primary_color else tool.pen_secondary_color;
-        if(tool.prev_world_pos == null) tool.prev_world_pos = world_pos;
-        var lp = math.LinePlotter.init(tool.prev_world_pos.?, world_pos);
+        if(tool.current_line == null) {
+            tool.current_line = .{
+                .prev_world_pos = world_pos,
+                .set_pixels = std.ArrayList(world_mod.OperationUnion.SetPixel).init(core.allocator),
+            };
+        }
+        var lp = math.LinePlotter.init(tool.current_line.?.prev_world_pos, world_pos);
         while(lp.next()) |pos| {
             try world.setPixel(pos, target_color);
         }
-        tool.prev_world_pos = world_pos;
+        tool.current_line.?.prev_world_pos = world_pos;
     }else{
-        tool.prev_world_pos = null;
+        if(tool.current_line) |*current_line| {
+            // commit
+            current_line.set_pixels.deinit(); // TODO: toOwnedSlice and put in operation
+            tool.current_line = null;
+        }
     }
 
     {

@@ -351,6 +351,9 @@ const Controller = struct {
         return controller;
     }
     pub fn destroy(controller: *Controller) void {
+        controller.draw_tool_data.deinit();
+        controller.fill_tool_data.deinit();
+
         const alloc = controller.alloc;
         alloc.destroy(controller);
     }
