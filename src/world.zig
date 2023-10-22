@@ -71,6 +71,7 @@ pub const World = struct {
     loaded_chunks: std.ArrayList(*Chunk), // we can also do [512]?*Chunk or something
     entities: std.ArrayList(*Entity),
     frame_index: u64 = 0,
+    history: History,
 
     pub fn create(alloc: std.mem.Allocator) !*World {
         const world = try alloc.create(World);
@@ -78,10 +79,12 @@ pub const World = struct {
             .alloc = alloc,
             .loaded_chunks = std.ArrayList(*Chunk).init(alloc),
             .entities = std.ArrayList(*Entity).init(alloc),
+            .history = History.init(alloc, world),
         };
         return world;
     }
     pub fn destroy(world: *World) void {
+        world.history.deinit();
         for(world.loaded_chunks.items) |chunk| {
             chunk.deinit();
             world.alloc.destroy(chunk);
@@ -200,17 +203,12 @@ pub const World = struct {
     }
 };
 
-// undo
-// a:
-//     [.][.][ ]
-// b:
-//     [.][,][,]
-// undo a:
-//     [ ][,][,]
-// how?
-// - loop backwards in the chunk setting a boolean chunk of flags of
-//   what has been touched then only affect those parts?
+// StateManager
 const History = struct {
+    // future optimizations:
+    // - per-chunk history
+    // for now we'll deal with the multiplayer undo backtracking.
+    // in singleplayer undo won't have that problem.
     synchronized: std.ArrayList(Operation),
     local: std.ArrayList(Operation),
     undo_operations: std.ArrayList(OperationID),
@@ -218,6 +216,32 @@ const History = struct {
     world: *World,
 
     unsent_messages: std.ArrayList(ClientToServerMessage),
+
+    fn init(alloc: std.mem.Allocator, world: *World) History {
+        return .{
+            .synchronized = std.ArrayList(Operation).init(alloc),
+            .local = std.ArrayList(Operation).init(alloc),
+            .undo_operations = std.ArrayList(OperationID).init(alloc),
+            .redo_operations = std.ArrayList(OperationID).init(alloc),
+
+            .unsent_messages = std.ArrayList(ClientToServerMessage).init(alloc),
+
+            .world = world,
+        };
+    }
+    fn deinit(history: *History) void {
+        for(history.synchronized.items) |*item| {
+            item.deinit();
+        }
+        history.synchronized.deinit();
+        for(history.local.items) |*item| {
+            item.deinit();
+        }
+        history.local.deinit();
+        history.undo_operations.deinit();
+        history.redo_operations.deinit();
+        history.unsent_messages.deinit();
+    }
 
     // all client<->server communication is ordered
     // the client sends operations when the client draws them
@@ -313,6 +337,10 @@ pub const ClientToServerMessage = struct {
 pub const Operation = struct {
     value: OperationUnion,
     id: OperationID,
+
+    pub fn deinit(op: *Operation) void {
+        _ = op;
+    }
 
     pub fn apply(operation: Operation, world: *World) !void {
         _ = world;
