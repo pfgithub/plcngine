@@ -357,17 +357,11 @@ const OperationID = union(enum) {
 };
 pub const OperationUnion = union(enum) {
     set_pixels: SetPixels,
-    set_area: SetArea,
 
-    pub const SetArea = struct {
-        old_region: []const u8,
-        new_region: []const u8, // run-length encode? & transparency ignored
-        size: Vec2i,
-    };
     pub const SetPixels = struct {
         pixel: []const SetPixel,
     };
-    pub const SetPixel = struct {
+    pub const SetPixel = struct { // 128 bits == 4mb to fill an entire region 512x512
         pos: Vec2i,
         old_value: u8,
         new_value: u8,
