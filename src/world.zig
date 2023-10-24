@@ -10,7 +10,7 @@ const vf2i = math.vf2i;
 
 pub const EntityID = enum(u32) {none, _};
 
-pub const CHUNK_SIZE = 2048; // 2048
+pub const CHUNK_SIZE = 512;
 pub const CHUNK_VERSION = 0;
 pub const Chunk = struct {
     chunk_pos: Vec2i,
