@@ -13,9 +13,10 @@ pen_primary_color: u8 = 1,
 pen_secondary_color: u8 = 0,
 current_line: ?CurrentLine = null,
 
+const SetPixel = struct {};
 const CurrentLine = struct {
     prev_world_pos: Vec2i,
-    set_pixels: std.ArrayList(world_mod.OperationUnion.SetPixel),
+    set_pixels: std.ArrayList(SetPixel),
 };
 
 // tool: click & drag : draws to the overlay & presence
@@ -41,7 +42,7 @@ pub fn update(tool: *DrawTool, app: *App) !void {
         if(tool.current_line == null) {
             tool.current_line = .{
                 .prev_world_pos = world_pos,
-                .set_pixels = std.ArrayList(world_mod.OperationUnion.SetPixel).init(core.allocator),
+                .set_pixels = std.ArrayList(SetPixel).init(core.allocator),
             };
         }
         var lp = math.LinePlotter.init(tool.current_line.?.prev_world_pos, world_pos);

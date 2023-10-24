@@ -334,21 +334,21 @@ pub const ClientToServerMessage = struct {
     // delete_operation [id: OperationID]
     // insert_operation [after: OperationID]
 };
+pub const ApplicationMode = enum{apply, unapply};
 pub const Operation = struct {
     value: OperationUnion,
     id: OperationID,
 
     pub fn deinit(op: *Operation) void {
-        _ = op;
+        return switch(op.value) {
+            inline else => |*val| val.deinit(),
+        };
     }
 
-    pub fn apply(operation: Operation, world: *World) !void {
-        _ = world;
-        _ = operation;
-    }
-    pub fn unapply(operation: Operation, world: *World) !void {
-        _ = world;
-        _ = operation;
+    pub fn exec(operation: Operation, world: *World, comptime mode: ApplicationMode) !void {
+        return switch(operation.value) {
+            inline else => |val| val.exec(world, mode),
+        };
     }
 };
 const OperationID = union(enum) {
@@ -356,14 +356,49 @@ const OperationID = union(enum) {
     local: usize,
 };
 pub const OperationUnion = union(enum) {
-    set_pixels: SetPixels,
+    write_in_chunk: WriteInChunk,
 
-    pub const SetPixels = struct {
-        pixel: []const SetPixel,
+    pub const WriteInChunk = struct {
+        alloc: std.mem.Allocator,
+
+        new_region: []const u8,
+        old_region: []const u8,
+        // will have to compress these with run-length encoding or fancier
+
+        offset: Vec2i,
+        size: Vec2i,
+        chunk: ChunkIndex,
+
+        fn deinit(op: *WriteInChunk) void {
+            op.alloc.free(op.new_region);
+            op.alloc.free(op.old_region);
+        }
+        fn exec(op: *const WriteInChunk, world: *World, comptime mode: ApplicationMode) !void {
+            const target_chunk = try world.getOrLoadChunk(op.chunk.position);
+            const copyfrom_region = switch(mode) {
+                .apply => op.new_region,
+                .unapply => op.old_region,
+            };
+            const y_pos = try std.math.cast(usize, op.offset[1]);
+            const x_pos = try std.math.cast(usize, op.offset[0]);
+            const y_offset = try std.math.cast(usize, op.size[1]);
+            const x_offset = try std.math.cast(usize, op.size[0]);
+            const stride = CHUNK_SIZE;
+            for(y_pos..y_pos + y_offset) |y_target| {
+                for(x_pos..x_pos + x_offset) |x_target| {
+                    const target_pixel = Vec2i{@intCast(x_target), @intCast(y_target)};
+                    _ = target_pixel;
+                    const new_value = copyfrom_region[y_offset * stride + x_offset];
+                    if(new_value != 0) {
+                        target_chunk.setPixel(Vec2i{x_offset, y_offset}, new_value);
+                    }
+                }
+            }
+        }
     };
-    pub const SetPixel = struct { // 128 bits == 4mb to fill an entire region 512x512
-        pos: Vec2i,
-        old_value: u8,
-        new_value: u8,
-    };
+};
+
+const ChunkIndex = struct {
+    position: Vec2i,
+    surface: u64,
 };
