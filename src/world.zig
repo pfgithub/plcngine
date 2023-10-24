@@ -361,9 +361,14 @@ pub const OperationUnion = union(enum) {
     pub const WriteInChunk = struct {
         alloc: std.mem.Allocator,
 
+        // a value of 255 within the region means 'do not touch this pixel'
         new_region: []const u8,
-        old_region: []const u8,
-        // will have to compress these with run-length encoding or fancier
+        old_region: ?[]const u8,
+        // may have to compress these with run-length encoding or fancier
+        // if we do run-length encoding we can make every WriteInChunk the size of a chunk
+        // run-length encoding = u16 length, u8 value, repeat. maybe with some optimizations
+        // for detail
+        // we can decompress in the exec function - basically loop over and write to the chunk
 
         offset: Vec2i,
         size: Vec2i,
@@ -377,7 +382,7 @@ pub const OperationUnion = union(enum) {
             const target_chunk = try world.getOrLoadChunk(op.chunk.position);
             const copyfrom_region = switch(mode) {
                 .apply => op.new_region,
-                .unapply => op.old_region,
+                .unapply => op.old_region orelse return error.MissingOldRegion,
             };
             const y_pos = try std.math.cast(usize, op.offset[1]);
             const x_pos = try std.math.cast(usize, op.offset[0]);
@@ -389,7 +394,7 @@ pub const OperationUnion = union(enum) {
                     const target_pixel = Vec2i{@intCast(x_target), @intCast(y_target)};
                     _ = target_pixel;
                     const new_value = copyfrom_region[y_offset * stride + x_offset];
-                    if(new_value != 0) {
+                    if(new_value != 255) {
                         target_chunk.setPixel(Vec2i{x_offset, y_offset}, new_value);
                     }
                 }

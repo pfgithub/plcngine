@@ -51,8 +51,10 @@ pub fn update(tool: *FillTool, app: *App) !void {
 pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, with_color: u8) !void {
     if(replace_color == with_color) return;
 
-    // alternatively, std.AutoHashMap(Vec2i) and fill it up with the whole region
-    // then convert that to an Operation
+    // fill will be implemented by:
+    // - make a new chunk-sized region filled with 255
+    // - set pixels in it
+    // - encode
 
     var setpixel_list = std.ArrayList(Vec2i).init(core.allocator);
     try setpixel_list.append(start_pos);
