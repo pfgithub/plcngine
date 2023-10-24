@@ -57,6 +57,12 @@ pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, w
     // - run-length encode
     // - emit output operation
 
+    // also we can do a faster fill if we're smarter about the setpixel list
+    // ie:
+    // - from each point go max left and max right
+    // - only add a pixel to the setpixel list if it's above or below and there was
+    // - a blocker between the last pixel in the list
+
     var setpixel_list = std.ArrayList(Vec2i).init(core.allocator);
     try setpixel_list.append(start_pos);
 
