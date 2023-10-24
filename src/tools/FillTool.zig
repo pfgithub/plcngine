@@ -54,7 +54,8 @@ pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, w
     // fill will be implemented by:
     // - make a new chunk-sized region filled with 255
     // - set pixels in it
-    // - encode
+    // - run-length encode
+    // - emit output operation
 
     var setpixel_list = std.ArrayList(Vec2i).init(core.allocator);
     try setpixel_list.append(start_pos);
