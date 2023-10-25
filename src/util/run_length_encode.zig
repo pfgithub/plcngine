@@ -5,10 +5,10 @@ const std = @import("std");
 const EncodeStatus = struct {
     output_al: *std.ArrayList(u8),
     current_byte: u8,
-    current_len: u7,
+    current_len: u32,
 
     fn addByte(status: *EncodeStatus, byte: u8) !void {
-        if(status.current_byte != byte or status.current_len == std.math.maxInt(u7)) {
+        if(status.current_byte != byte or status.current_len == std.math.maxInt(u32)) {
             try status.commit();
         }
         status.current_byte = byte;
@@ -19,8 +19,12 @@ const EncodeStatus = struct {
             // nothing to do
         }else if(status.current_len == 1 and status.current_byte <= std.math.maxInt(u7)) {
             try status.output_al.append(status.current_byte);
+        }else if(status.current_len < std.math.maxInt(u7)) {
+            try status.output_al.append(0b1_0000000 | @as(u8, @intCast(status.current_len)));
+            try status.output_al.append(status.current_byte);
         }else{
-            try status.output_al.append(0b1_0000000 | @as(u8, status.current_len));
+            try status.output_al.append(0b1_0000000);
+            try status.output_al.writer().writeIntLittle(u32, status.current_len);
             try status.output_al.append(status.current_byte);
         }
         status.current_len = 0;
@@ -81,7 +85,11 @@ pub fn decode(region: []const u8, output: *[world_mod.CHUNK_SIZE * world_mod.CHU
     };
 
     while(reader.readByte()) |byte| {
-        if(byte & 0b1_0000000 != 0) {
+        if(byte == 0b1_0000000) {
+            const len = try reader.readIntLittle(u32);
+            const write_byte = try reader.readByte();
+            for(0..len) |_| try cw.writeByte(write_byte);
+        }else if(byte & 0b1_0000000 != 0) {
             const len = byte & 0b0_1111111;
             const write_byte = try reader.readByte();
             for(0..len) |_| try cw.writeByte(write_byte);
