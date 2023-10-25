@@ -1,5 +1,6 @@
 const std = @import("std");
 const math = @import("math.zig");
+const core = @import("mach-core");
 // const world = @This();
 const render = @import("render.zig");
 const run_length_encode = @import("util/run_length_encode.zig");
@@ -12,7 +13,11 @@ const vf2i = math.vf2i;
 pub const EntityID = enum(u32) {none, _};
 
 pub const CHUNK_SIZE = 512;
-pub const CHUNK_VERSION = 0;
+
+/// VERSION HISTORY
+/// 0 : raw bytes
+/// 1 : run length encode
+pub const CHUNK_VERSION = 1;
 pub const Chunk = struct {
     chunk_pos: Vec2i,
     texture: [CHUNK_SIZE * CHUNK_SIZE]u8 = [_]u8{0} ** (CHUNK_SIZE * CHUNK_SIZE), // 8bpp image data, shader to remap colors based on entity
@@ -50,8 +55,13 @@ pub const Chunk = struct {
 
     const FILE_HEADER = std.fmt.comptimePrint("plc_chunk_v{d}_s{d}:", .{CHUNK_VERSION, CHUNK_SIZE});
     pub fn serialize(chunk: Chunk, writer: anytype) !void {
-        try writer.writeAll(FILE_HEADER);
-        try writer.writeAll(&chunk.texture);
+        var output_al = std.ArrayList(u8).init(core.allocator);
+        defer output_al.deinit();
+
+        try output_al.appendSlice(FILE_HEADER);
+        try run_length_encode.encode(&chunk.texture, &output_al);
+
+        try writer.writeAll(output_al.items);
     }
     pub fn deserialize(out: *Chunk, reader: anytype) !void {
         var header: [FILE_HEADER.len]u8 = undefined;
@@ -60,7 +70,11 @@ pub const Chunk = struct {
             return error.BadFile;
         }
 
-        if(try reader.readAtLeast(&out.texture, out.texture.len) != out.texture.len) return error.BadFile;
+        const encoded_region = try reader.readAllAlloc(core.allocator, std.math.maxInt(usize));
+        defer core.allocator.free(encoded_region);
+
+        for(&out.texture) |*byte| byte.* = 255;
+        try run_length_encode.decode(encoded_region, &out.texture);
 
         if(reader.readByte() != error.EndOfStream) return error.BadFile;
 

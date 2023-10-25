@@ -12,31 +12,53 @@ const EncodeStatus = struct {
             try status.commit();
         }
         status.current_byte = byte;
+        status.current_len += 1;
     }
     fn commit(status: *EncodeStatus) !void {
         if(status.current_len == 0) {
             // nothing to do
-        }else if(status.current_len == 1 and status.current_byte < std.math.maxInt(u7)) {
+        }else if(status.current_len == 1 and status.current_byte <= std.math.maxInt(u7)) {
             try status.output_al.append(status.current_byte);
         }else{
-            try status.output_al.append(0b1_0000000 | status.current_len);
+            try status.output_al.append(0b1_0000000 | @as(u8, status.current_len));
             try status.output_al.append(status.current_byte);
         }
         status.current_len = 0;
     }
 };
 
-fn encode(region: *const [world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE]u8) []u8 {
-    var output_al = std.ArrayList.init(u8).init(core.allocator);
+// can we guarantee that the encoded size is always <= chunk_size * chunk_size?
+// i think the answer is no. but we can guarantee that the encoded size is always <= that + 1
+// we use a uuid 16 bit header and if the file already has that header, add an indicator to say it does
+// if in decoding the header is missing, don't decompress just copy.
+pub fn encode(region: *const [world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE]u8, output_al: *std.ArrayList(u8)) !void {
     var status = EncodeStatus{
-        .output_al = &output_al,
+        .output_al = output_al,
         .current_byte = 0,
         .current_len = 0,
     };
+    const start_pos = status.output_al.items.len;
+
     for(region) |byte| {
         try status.addByte(byte);
     }
     try status.commit();
+
+    const end_pos = status.output_al.items.len;
+    if(end_pos - start_pos > region.len) {
+        std.log.warn("compressed size greater than uncompressed size: {d}, {d}", .{end_pos - start_pos, region.len});
+    }
+
+    if(@import("builtin").mode != .ReleaseFast and @import("builtin").mode != .ReleaseSmall) {
+        const output_size = world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE;
+        var validate_res: [output_size]u8 = [_]u8{255} ** output_size;
+        decode(status.output_al.items[start_pos..], &validate_res) catch |e| {
+            std.debug.panic("new region validate failed; decode error: {}", .{e});
+        };
+        if(!std.mem.eql(u8, region, &validate_res)) {
+            std.debug.panic("new region validation failed", .{});
+        }
+    }
 }
 const ChunkWriter = struct {
     output: []u8,
@@ -48,7 +70,8 @@ const ChunkWriter = struct {
     }
 };
 /// WARNING: does not clear output ; byte 255 in input source will leave the existing value unmodified
-fn decode(region: []const u8, output: *[world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE]u8) !void {
+pub fn decode(region: []const u8, output: *[world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE]u8) !void {
+    // TODO: allow custom output fn rather than passing in the chunk data
 
     var in_fbs = std.io.fixedBufferStream(region);
     const reader = in_fbs.reader();
@@ -68,5 +91,10 @@ fn decode(region: []const u8, output: *[world_mod.CHUNK_SIZE * world_mod.CHUNK_S
     } else |err| switch(err) {
         error.EndOfStream => {},
         else => return err,
+    }
+
+    if(cw.pos != output.len) {
+        std.log.err("chunk decode expected len {d}, got len {d}", .{output.len, cw.pos});
+        return error.DecodeFailed;
     }
 }
