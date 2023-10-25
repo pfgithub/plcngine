@@ -57,6 +57,10 @@ pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, w
     // - run-length encode
     // - emit output operation
 
+    const temp_area = try core.allocator.create([world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE]u8);
+    for(temp_area) |*byte| byte.* = 255;
+    defer core.allocator.destroy(temp_area);
+
     // also we can do a faster fill if we're smarter about the setpixel list
     // ie:
     // - from each point go max left and max right

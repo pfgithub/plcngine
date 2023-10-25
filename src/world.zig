@@ -2,6 +2,7 @@ const std = @import("std");
 const math = @import("math.zig");
 // const world = @This();
 const render = @import("render.zig");
+const run_length_encode = @import("util/run_length_encode.zig");
 
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
@@ -40,8 +41,11 @@ pub const Chunk = struct {
     }
     pub fn setPixel(chunk: *Chunk, offset: Vec2i, value: u8) void {
         const index = itmIndex(offset) orelse unreachable;
-        chunk.texture[index] = value;
+        chunk.mutate()[index] = value;
+    }
+    pub fn mutate(chunk: *Chunk) *[CHUNK_SIZE * CHUNK_SIZE]u8 {
         chunk.last_updated += 1;
+        return &chunk.texture;
     }
 
     const FILE_HEADER = std.fmt.comptimePrint("plc_chunk_v{d}_s{d}:", .{CHUNK_VERSION, CHUNK_SIZE});
@@ -361,22 +365,15 @@ pub const OperationUnion = union(enum) {
     pub const WriteInChunk = struct {
         alloc: std.mem.Allocator,
 
-        // a value of 255 within the region means 'do not touch this pixel'
+        // run-length encoded overlays
         new_region: []const u8,
         old_region: ?[]const u8,
-        // may have to compress these with run-length encoding or fancier
-        // if we do run-length encoding we can make every WriteInChunk the size of a chunk
-        // run-length encoding = u16 length, u8 value, repeat. maybe with some optimizations
-        // for detail
-        // we can decompress in the exec function - basically loop over and write to the chunk
 
-        offset: Vec2i,
-        size: Vec2i,
         chunk: ChunkIndex,
 
         fn deinit(op: *WriteInChunk) void {
             op.alloc.free(op.new_region);
-            op.alloc.free(op.old_region);
+            if(op.old_region) |old_region| op.alloc.free(old_region);
         }
         fn exec(op: *const WriteInChunk, world: *World, comptime mode: ApplicationMode) !void {
             const target_chunk = try world.getOrLoadChunk(op.chunk.position);
@@ -384,21 +381,7 @@ pub const OperationUnion = union(enum) {
                 .apply => op.new_region,
                 .unapply => op.old_region orelse return error.MissingOldRegion,
             };
-            const y_pos = try std.math.cast(usize, op.offset[1]);
-            const x_pos = try std.math.cast(usize, op.offset[0]);
-            const y_offset = try std.math.cast(usize, op.size[1]);
-            const x_offset = try std.math.cast(usize, op.size[0]);
-            const stride = CHUNK_SIZE;
-            for(y_pos..y_pos + y_offset) |y_target| {
-                for(x_pos..x_pos + x_offset) |x_target| {
-                    const target_pixel = Vec2i{@intCast(x_target), @intCast(y_target)};
-                    _ = target_pixel;
-                    const new_value = copyfrom_region[y_offset * stride + x_offset];
-                    if(new_value != 255) {
-                        target_chunk.setPixel(Vec2i{x_offset, y_offset}, new_value);
-                    }
-                }
-            }
+            try run_length_encode.decode(copyfrom_region, target_chunk.mutate());
         }
     };
 };
