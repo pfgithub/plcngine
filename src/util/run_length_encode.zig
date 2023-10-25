@@ -2,6 +2,9 @@ const world_mod = @import("../world.zig");
 const core = @import("mach-core");
 const std = @import("std");
 
+// we can consider using QOI if we switch to rgba images
+// also if we sacrifice one bit of alpha we can do fancy stuff
+
 const EncodeStatus = struct {
     output_al: *std.ArrayList(u8),
     current_byte: u8,
