@@ -143,7 +143,7 @@ pub const World = struct {
         for(0..loaded_chunks_len) |chunk_index_inv| { // 0 1 2 3 => 3 2 1 0
             const chunk_index = loaded_chunks_len - 1 - chunk_index_inv;
             const chunk = world.loaded_chunks.items[chunk_index];
-            if(world.frame_index != chunk.last_used) {
+            if(world.frame_index > chunk.last_used and world.frame_index - chunk.last_used > 1000) {
                 std.log.info("UNLOAD: {d}", .{chunk.chunk_pos});
 
                 try saveChunk(chunk);
