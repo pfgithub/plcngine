@@ -281,7 +281,7 @@ pub const Render = struct {
                 .bytes_per_row = CHUNK_SIZE * 1, // width * channels
                 .rows_per_image = CHUNK_SIZE, // height
             };
-            render.app.queue.writeTexture(&.{ .texture = cri.gpu_texture }, &data_layout, &img_size, &chunk.texture);
+            render.app.queue.writeTexture(&.{ .texture = cri.gpu_texture }, &data_layout, &img_size, &chunk.texture.texture);
         }
 
 

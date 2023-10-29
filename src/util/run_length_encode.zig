@@ -38,7 +38,7 @@ const EncodeStatus = struct {
 // i think the answer is no. but we can guarantee that the encoded size is always <= that + 1
 // we use a uuid 16 bit header and if the file already has that header, add an indicator to say it does
 // if in decoding the header is missing, don't decompress just copy.
-pub fn encode(region: *const [world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE]u8, output_al: *std.ArrayList(u8)) !void {
+pub fn encode(region: *const world_mod.Texture, output_al: *std.ArrayList(u8)) !void {
     var status = EncodeStatus{
         .output_al = output_al,
         .current_byte = 0,
@@ -46,23 +46,23 @@ pub fn encode(region: *const [world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE]u8, ou
     };
     const start_pos = status.output_al.items.len;
 
-    for(region) |byte| {
+    for(region.texture) |byte| {
         try status.addByte(byte);
     }
     try status.commit();
 
     const end_pos = status.output_al.items.len;
-    if(end_pos - start_pos > region.len) {
-        std.log.warn("compressed size greater than uncompressed size: {d}, {d}", .{end_pos - start_pos, region.len});
+    if(end_pos - start_pos > region.texture.len) {
+        std.log.warn("compressed size greater than uncompressed size: {d}, {d}", .{end_pos - start_pos, region.texture.len});
     }
 
     if(@import("builtin").mode != .ReleaseFast and @import("builtin").mode != .ReleaseSmall) {
-        const output_size = world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE;
-        var validate_res: [output_size]u8 = [_]u8{255} ** output_size;
+        var validate_res: world_mod.Texture = .{};
+        for(&validate_res.texture) |*item| item.* = 0xFF;
         decode(status.output_al.items[start_pos..], &validate_res) catch |e| {
             std.debug.panic("new region validate failed; decode error: {}", .{e});
         };
-        if(!std.mem.eql(u8, region, &validate_res)) {
+        if(!std.mem.eql(u8, &region.texture, &validate_res.texture)) {
             std.debug.panic("new region validation failed", .{});
         }
     }
@@ -77,14 +77,14 @@ const ChunkWriter = struct {
     }
 };
 /// WARNING: does not clear output ; byte 255 in input source will leave the existing value unmodified
-pub fn decode(region: []const u8, output: *[world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE]u8) !void {
+pub fn decode(region: []const u8, output: *world_mod.Texture) !void {
     // TODO: allow custom output fn rather than passing in the chunk data
 
     var in_fbs = std.io.fixedBufferStream(region);
     const reader = in_fbs.reader();
 
     var cw = ChunkWriter{
-        .output = output,
+        .output = &output.texture,
     };
 
     while(reader.readByte()) |byte| {
@@ -104,8 +104,8 @@ pub fn decode(region: []const u8, output: *[world_mod.CHUNK_SIZE * world_mod.CHU
         else => return err,
     }
 
-    if(cw.pos != output.len) {
-        std.log.err("chunk decode expected len {d}, got len {d}", .{output.len, cw.pos});
+    if(cw.pos != output.texture.len) {
+        std.log.err("chunk decode expected len {d}, got len {d}", .{output.texture.len, cw.pos});
         return error.DecodeFailed;
     }
 }

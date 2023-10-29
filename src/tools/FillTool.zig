@@ -4,6 +4,7 @@ const App = @import("../main2.zig");
 const math = @import("../math.zig");
 const core = @import("mach-core");
 const world_mod = @import("../world.zig");
+const run_length_encode = @import("../util/run_length_encode.zig");
 
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
@@ -57,9 +58,10 @@ pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, w
     // - run-length encode
     // - emit output operation
 
-    const temp_area = try core.allocator.create([world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE]u8);
-    for(temp_area) |*byte| byte.* = 255;
-    defer core.allocator.destroy(temp_area);
+    if(replace_color == 255 or with_color == 255) std.debug.panic("255 not allowed", .{});
+
+    var temp_area = world_mod.Texture{};
+    for(&temp_area.texture) |*val| val.* = 255;
 
     // also we can do a faster fill if we're smarter about the setpixel list
     // ie:
@@ -75,16 +77,24 @@ pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, w
         if(iter_count > world_mod.CHUNK_SIZE * world_mod.CHUNK_SIZE * 2) {
             @panic("infinite loop");
         }
-        chunk.setPixel(target, with_color);
+        temp_area.setPixel(target, with_color);
 
         for(&[_]Vec2i{.{-1, 0}, .{1, 0}, .{0, -1}, .{0, 1}}) |offset| {
             const new_target = target + offset;
-            if(!world_mod.Chunk.hasPixel(new_target)) continue;
-            const value = chunk.getPixel(new_target);
+            if(!world_mod.Texture.hasPixel(new_target)) continue;
+            const world_value = chunk.getPixel(new_target);
+            const newregion_value = temp_area.getPixel(new_target);
 
-            if(value == replace_color) {
+            if(world_value == replace_color and newregion_value != 255) {
                 try setpixel_list.append(new_target);
             }
         }
     }
+
+    var res_al = std.ArrayList(u8).init(core.allocator);
+    defer res_al.deinit();
+
+    try run_length_encode.encode(&temp_area, &res_al);
+    std.log.info("TODO apply fill operation len {d}", .{res_al.items.len});
+    // we can call toOwnedSlice on res_al and still call deinit() after without freeing the memory
 }

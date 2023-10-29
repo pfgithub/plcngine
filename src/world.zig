@@ -14,13 +14,36 @@ pub const EntityID = enum(u32) {none, _};
 
 pub const CHUNK_SIZE = 512;
 
+pub const Texture = struct {
+    texture: [CHUNK_SIZE * CHUNK_SIZE]u8 = [_]u8{0} ** (CHUNK_SIZE * CHUNK_SIZE), // 8bpp image data, shader to remap colors based on entity
+
+    pub fn hasPixel(offset: Vec2i) bool {
+        if(@reduce(.Or, offset < Vec2i{0, 0}) or @reduce(.Or, offset >= Vec2i{CHUNK_SIZE, CHUNK_SIZE})) {
+            return false;
+        }
+        return true;
+    }
+    fn itmIndex(offset: Vec2i) ?usize {
+        if(!hasPixel(offset)) return null;
+        return @intCast(offset[1] * CHUNK_SIZE + offset[0]);
+    }
+    pub fn getPixel(tex: *const Texture, offset: Vec2i) u8 {
+        const index = itmIndex(offset) orelse unreachable;
+        return tex.texture[index];
+    }
+    pub fn setPixel(tex: *Texture, offset: Vec2i, value: u8) void {
+        const index = itmIndex(offset) orelse unreachable;
+        tex.texture[index] = value;
+    }
+};
+
 /// VERSION HISTORY
 /// 0 : raw bytes
 /// 1 : run length encode
 pub const CHUNK_VERSION = 1;
 pub const Chunk = struct {
     chunk_pos: Vec2i,
-    texture: [CHUNK_SIZE * CHUNK_SIZE]u8 = [_]u8{0} ** (CHUNK_SIZE * CHUNK_SIZE), // 8bpp image data, shader to remap colors based on entity
+    texture: Texture = .{},
     //entities: [1024]EntityID = [_]EntityID{.none} ** 1024,
     chunk_render_info: render.ChunkRenderInfo = .{},
     last_updated: u64 = 1,
@@ -30,27 +53,18 @@ pub const Chunk = struct {
     pub fn deinit(chunk: *Chunk) void {
         chunk.chunk_render_info.deinit();
     }
-    fn itmIndex(offset: Vec2i) ?usize {
-        if(!hasPixel(offset)) return null;
-        return @intCast(offset[1] * CHUNK_SIZE + offset[0]);
-    }
-    pub fn hasPixel(offset: Vec2i) bool {
-        if(@reduce(.Or, offset < Vec2i{0, 0}) or @reduce(.Or, offset >= Vec2i{CHUNK_SIZE, CHUNK_SIZE})) {
-            return false;
-        }
-        return true;
-    }
-    pub fn getPixel(chunk: *const Chunk, offset: Vec2i) u8 {
-        const index = itmIndex(offset) orelse unreachable;
-        return chunk.texture[index];
-    }
-    pub fn setPixel(chunk: *Chunk, offset: Vec2i, value: u8) void {
-        const index = itmIndex(offset) orelse unreachable;
-        chunk.mutate()[index] = value;
-    }
-    pub fn mutate(chunk: *Chunk) *[CHUNK_SIZE * CHUNK_SIZE]u8 {
+    pub fn mutate(chunk: *Chunk) *Texture {
         chunk.last_updated += 1;
         return &chunk.texture;
+    }
+    pub fn hasPixel(offset: Vec2i) bool {
+        return Texture.hasPixel(offset);
+    }
+    pub fn getPixel(chunk: *const Chunk, offset: Vec2i) u8 {
+        return chunk.texture.getPixel(offset);
+    }
+    pub fn setPixel(chunk: *Chunk, offset: Vec2i, value: u8) void {
+        return chunk.mutate().setPixel(offset, value);
     }
 
     const FILE_HEADER = std.fmt.comptimePrint("plc_chunk_v{d}_s{d}:", .{CHUNK_VERSION, CHUNK_SIZE});
@@ -73,7 +87,7 @@ pub const Chunk = struct {
         const encoded_region = try reader.readAllAlloc(core.allocator, std.math.maxInt(usize));
         defer core.allocator.free(encoded_region);
 
-        for(&out.texture) |*byte| byte.* = 255;
+        for(&out.texture.texture) |*byte| byte.* = 255;
         try run_length_encode.decode(encoded_region, &out.texture);
 
         if(reader.readByte() != error.EndOfStream) return error.BadFile;
