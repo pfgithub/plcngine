@@ -286,7 +286,7 @@ const History = struct {
         try history.local.append(operation);
         errdefer _ = history.local.pop();
         try history.unsent_messages.append(.{});
-        operation.apply(history.world);
+        try operation.exec(history.world, .apply);
     }
 
     // to add a new synchronized operation from a local operation:
@@ -368,18 +368,19 @@ pub const ClientToServerMessage = struct {
 };
 pub const ApplicationMode = enum{apply, unapply};
 pub const Operation = struct {
-    value: OperationUnion,
-    id: OperationID,
+    alloc: std.mem.Allocator,
+    items: []OperationUnion,
 
     pub fn deinit(op: *Operation) void {
-        return switch(op.value) {
-            inline else => |*val| val.deinit(),
+        for(op.items) |*item| switch(item.*) {
+            inline else => |*val| val.deinit(op.alloc),
         };
+        op.alloc.free(op.items);
     }
 
     pub fn exec(operation: Operation, world: *World, comptime mode: ApplicationMode) !void {
-        return switch(operation.value) {
-            inline else => |val| val.exec(world, mode),
+        for(operation.items) |*item| switch(item.*) {
+            inline else => |val| try val.exec(world, mode),
         };
     }
 };
@@ -391,17 +392,15 @@ pub const OperationUnion = union(enum) {
     write_in_chunk: WriteInChunk,
 
     pub const WriteInChunk = struct {
-        alloc: std.mem.Allocator,
-
         // run-length encoded overlays
         new_region: []const u8,
         old_region: ?[]const u8,
 
         chunk: ChunkIndex,
 
-        fn deinit(op: *WriteInChunk) void {
-            op.alloc.free(op.new_region);
-            if(op.old_region) |old_region| op.alloc.free(old_region);
+        fn deinit(op: *WriteInChunk, alloc: std.mem.Allocator) void {
+            alloc.free(op.new_region);
+            if(op.old_region) |old_region| alloc.free(old_region);
         }
         fn exec(op: *const WriteInChunk, world: *World, comptime mode: ApplicationMode) !void {
             const target_chunk = try world.getOrLoadChunk(op.chunk.position);

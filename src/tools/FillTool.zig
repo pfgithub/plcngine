@@ -28,7 +28,9 @@ pub fn update(tool: *FillTool, app: *App) !void {
     if((ih.frame.mouse_press.get(.left) or ih.frame.mouse_press.get(.right)) and ih.modsEql(.{})) {
         const target_color = if(ih.frame.mouse_press.get(.left)) tool.fill_primary_color else tool.fill_secondary_color;
         const current_color = target_chunk.getPixel(start_pos);
-        try floodFill(target_chunk, start_pos, current_color, target_color);
+
+        const operation = try floodFill(target_chunk, start_pos, current_color, target_color);
+        if(operation) |*op| try world.history.applyOperation(op.*);
     }
 
     {
@@ -49,8 +51,8 @@ pub fn update(tool: *FillTool, app: *App) !void {
 
 // in the future, this can return an Operation
 // either set_pixels or set_area, whichever is smaller
-pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, with_color: u8) !void {
-    if(replace_color == with_color) return;
+pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, with_color: u8) !?world_mod.Operation {
+    if(replace_color == with_color) return null;
 
     // fill will be implemented by:
     // - make a new chunk-sized region filled with 255
@@ -85,7 +87,7 @@ pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, w
             const world_value = chunk.getPixel(new_target);
             const newregion_value = temp_area.getPixel(new_target);
 
-            if(world_value == replace_color and newregion_value != 255) {
+            if(world_value == replace_color and newregion_value != with_color) {
                 try setpixel_list.append(new_target);
             }
         }
@@ -95,6 +97,25 @@ pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, w
     defer res_al.deinit();
 
     try run_length_encode.encode(&temp_area, &res_al);
-    std.log.info("TODO apply fill operation len {d}", .{res_al.items.len});
-    // we can call toOwnedSlice on res_al and still call deinit() after without freeing the memory
+
+    std.log.info("fill operation len {d}", .{res_al.items.len});
+
+    var items = try std.ArrayList(world_mod.OperationUnion).initCapacity(core.allocator, 1);
+    defer items.deinit();
+
+    try items.append(.{
+        .write_in_chunk = .{
+            .new_region = try res_al.toOwnedSlice(),
+            .old_region = null,
+            .chunk = .{
+                .position = chunk.chunk_pos,
+                .surface = 0,
+            },
+        },
+    });
+
+    return .{
+        .alloc = core.allocator,
+        .items = try items.toOwnedSlice(),
+    };
 }
