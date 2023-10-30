@@ -391,7 +391,7 @@ const OperationID = union(enum) {
 pub const OperationUnion = union(enum) {
     write_in_chunk: WriteInChunk,
 
-    // write_pixels: []u32
+    // write_pixels: []u32 (within one chunk)
     // - u9 x, u9 y, u8 byte
     // alternatively this can be an encoding strategy for WriteInChunk rather
     // than a seperate OperationUnion type

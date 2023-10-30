@@ -13,7 +13,10 @@ pen_primary_color: u8 = 1,
 pen_secondary_color: u8 = 0,
 current_line: ?CurrentLine = null,
 
-const SetPixel = struct {};
+const SetPixel = struct {
+    pos: Vec2i,
+    value: u8,
+};
 const CurrentLine = struct {
     prev_world_pos: Vec2i,
     set_pixels: std.ArrayList(SetPixel),
@@ -47,12 +50,20 @@ pub fn update(tool: *DrawTool, app: *App) !void {
         }
         var lp = math.LinePlotter.init(tool.current_line.?.prev_world_pos, world_pos);
         while(lp.next()) |pos| {
-            try world.setPixel(pos, target_color);
+            if(tool.current_line.?.set_pixels.items.len == 0 or @reduce(.Or, tool.current_line.?.prev_world_pos != pos)) {
+                try tool.current_line.?.set_pixels.append(.{.pos = pos, .value = target_color});
+            }
         }
         tool.current_line.?.prev_world_pos = world_pos;
     }else{
         if(tool.current_line) |*current_line| {
             // commit
+            std.log.info("line len: {d}", .{current_line.set_pixels.items.len});
+            for(current_line.set_pixels.items) |item| {
+                try world.setPixel(item.pos, item.value);
+            }
+
+
             current_line.set_pixels.deinit(); // TODO: toOwnedSlice and put in operation
             tool.current_line = null;
         }
