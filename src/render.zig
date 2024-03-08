@@ -12,7 +12,7 @@ const y = math.y;
 const z = math.z;
 const w = math.w;
 
-const core = @import("mach-core");
+const core = @import("mach").core;
 const gpu = core.gpu;
 
 const Vec2i = math.Vec2i;

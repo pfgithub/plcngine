@@ -1,5 +1,5 @@
 const world_mod = @import("../world.zig");
-const core = @import("mach-core");
+const core = @import("mach").core;
 const std = @import("std");
 
 // we can consider using QOI if we switch to rgba images
@@ -27,7 +27,7 @@ const EncodeStatus = struct {
             try status.output_al.append(status.current_byte);
         }else{
             try status.output_al.append(0b1_0000000);
-            try status.output_al.writer().writeIntLittle(u32, status.current_len);
+            try status.output_al.writer().writeInt(u32, status.current_len, .little);
             try status.output_al.append(status.current_byte);
         }
         status.current_len = 0;
@@ -89,7 +89,7 @@ pub fn decode(region: []const u8, output: *world_mod.Texture) !void {
 
     while(reader.readByte()) |byte| {
         if(byte == 0b1_0000000) {
-            const len = try reader.readIntLittle(u32);
+            const len = try reader.readInt(u32, .little);
             const write_byte = try reader.readByte();
             for(0..len) |_| try cw.writeByte(write_byte);
         }else if(byte & 0b1_0000000 != 0) {

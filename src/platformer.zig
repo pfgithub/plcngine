@@ -57,7 +57,7 @@ pub const Player = struct {
     }
 
     pub fn update(player: *Player, world: *World, controls: *const GameControls) !void {
-        var flying = false;
+        const flying = false;
 
         if(!controls.dash_held) {
             player.dash_key_used = false;

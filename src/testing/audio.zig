@@ -12,7 +12,7 @@
 // the note then fades out slowly.)
 const std = @import("std");
 const builtin = @import("builtin");
-const sysaudio = @import("mach-sysaudio");
+const sysaudio = @import("mach").sysaudio;
 
 pub const App = @This();
 

@@ -3,7 +3,7 @@ const App = @import("../main2.zig");
 const math = @import("../math.zig");
 const world_mod = @import("../world.zig");
 const std = @import("std");
-const core = @import("mach-core");
+const core = @import("mach").core;
 
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;

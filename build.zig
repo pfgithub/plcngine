@@ -1,5 +1,5 @@
 const std = @import("std");
-const mach_core = @import("mach_core");
+const mach = @import("mach");
 
 const build_runner = @import("root");
 const deps = build_runner.dependencies;
@@ -17,9 +17,8 @@ const msdfgen_root = blk: {
 // TODO: move libs from submodules to package manager; search in zig-cache
 // for dependencies.zig, use deps.something to find the prefix folder
 
-fn linkMsdfGen(b: *std.Build, app: *std.build.Step.Compile) !void {
+fn linkMsdfGen(b: *std.Build, app: *std.Build.Module) !void {
     _ = b;
-    app.linkSystemLibrary("c++");
     app.addIncludePath(.{.path = msdfgen_root ++ "/"});
     app.addIncludePath(.{.path = "src/"});
     for(&[_][]const u8{
@@ -58,42 +57,48 @@ pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const mach_core_dep = b.dependency("mach_core", .{
+    const msdf_module = b.addModule("msdf", .{
         .target = target,
         .optimize = optimize,
+        .root_source_file = .{.path = "src/msdf.zig"},
+        .link_libcpp = true,
     });
-    const mach_freetype_dep = b.dependency("mach_freetype", .{
+    const use_system_zlib = b.option(bool, "use_system_zlib", "Use system zlib") orelse false;
+    const enable_brotli = b.option(bool, "enable_brotli", "Build brotli") orelse true;
+    const freetype_dep = b.dependency("freetype", .{
         .target = target,
         .optimize = optimize,
+        .use_system_zlib = use_system_zlib,
+        .enable_brotli = enable_brotli,
     });
-    const mach_sysaudio_dep = b.dependency("mach_sysaudio", .{
+    msdf_module.linkLibrary(freetype_dep.artifact("freetype")); // this lib has installHeader, how can we use it instead of vvv?
+    msdf_module.addIncludePath(freetype_dep.path("include"));
+    try linkMsdfGen(b, msdf_module);
+
+    const mach_dep = b.dependency("mach", .{
         .target = target,
         .optimize = optimize,
     });
     const xev = b.dependency("libxev", .{ .target = target, .optimize = optimize });
-    const app = try mach_core.App.init(b, mach_core_dep.builder, .{
+    const app = try mach.CoreApp.init(b, mach_dep.builder, .{
         .name = "plcngine",
         .src = "src/main2.zig",
         .target = target,
-        .deps = &[_]std.build.ModuleDependency{
-            std.Build.ModuleDependency{
-                .name = "mach-freetype",
-                .module = mach_freetype_dep.module("mach-freetype"),
-            },
-            std.Build.ModuleDependency{
-                .name = "mach-sysaudio",
-                .module = mach_sysaudio_dep.module("mach-sysaudio"),
-            },
-            std.Build.ModuleDependency{
+        .deps = &.{
+            .{
                 .name = "xev",
                 .module = xev.module("xev"),
             },
+            .{.name = "msdf", .module = msdf_module},
         },
         .optimize = optimize,
     });
-    @import("mach_freetype").linkFreetype(mach_freetype_dep.builder, app.compile);
-    @import("mach_sysaudio").link(mach_sysaudio_dep.builder, app.compile);
-    try linkMsdfGen(b, app.compile);
+    app.compile.addIncludePath(.{.path = "src/"});
+    // const mach_freetype_dep = b.dependency("mach_freetype", .{
+    //     .target = target,
+    //     .optimize = optimize,
+    // });
+    // app.compile.root_module.addImport("mach-freetype", mach_freetype_dep.module("mach-freetype"));
 
     if (b.args) |args| app.run.addArgs(args);
 
@@ -102,8 +107,10 @@ pub fn build(b: *std.Build) !void {
 
     const exe = b.addExecutable(.{
         .name = "network",
+        .target = target,
+        .optimize = optimize,
         .root_source_file = .{.path = "src/testing/xevtest.zig"},
     });
-    exe.addModule("xev", xev.module("xev"));
+    exe.root_module.addImport("xev", xev.module("xev"));
     b.installArtifact(exe);
 }

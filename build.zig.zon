@@ -13,20 +13,20 @@
             .hash = "12205138bd6276b716921d78586aa272d11dc9e848086fb9cb56f41f6be7869b466e",
         },
         .libxev = .{
-            .url = "https://github.com/mitchellh/libxev/archive/0c0ce75d7a82105a8a8bda1516a05fc149171917.tar.gz",
-            .hash = "12208070233b17de6be05e32af096a6760682b48598323234824def41789e993432c",
+            .url = "https://github.com/mitchellh/libxev/archive/4e6781895e4e6c477597c8c2713d36cd82b57d07.tar.gz",
+            .hash = "12203f87e00caa6c07c02a748f234a5c0ee2ca5c334ec464e88810d93e7b5495a56f",
         },
-        .mach_core = .{
-            .url = "https://pkg.machengine.org/mach-core/331ce61cb8c075be6d7c46e49da8ccbd5967d9b7.tar.gz",
-            .hash = "12203bdeb8af9b1da2a521beafb51e3657e1c4f49b058cdd114f607b75dbb95ad306",
+        .mach = .{
+            .url = "https://pkg.machengine.org/mach/ea6a9438aa13ee83f9239d3aada352dcb9ea8b7c.tar.gz",
+            .hash = "1220a1ac8dba2fee590af6bafce6e1d5a768b93456e8877fe3d5402f19aec3d5d696",
         },
-        .mach_freetype = .{
-            .url = "https://pkg.machengine.org/mach-freetype/a6d971285dfe731e49f82e81c81da2b7f5c6a442.tar.gz",
-            .hash = "12200d164703408a8c4a5734dac089a07c228d94a2ea19f3d2b5a07c2c97f1ca46dc",
+        .freetype = .{
+            .url = "https://pkg.machengine.org/freetype/398638fd1cb723e478658ea371fe3be1a4dce0ae.tar.gz",
+            .hash = "12208c57b72e3fb5c8d5d3e667e2e21ca1d9e2b6fc3f84182b320f63933f591823da",
         },
-        .mach_sysaudio = .{
-            .url = "https://pkg.machengine.org/mach-sysaudio/a3ae83666cb6ee1e5c97364f4d85a0cd41063c9c.tar.gz",
-            .hash = "1220456789fcadef0123456789abcdef0123456789abcdef0123456789abcdef0123",
-        },
+        // .mach_freetype = .{
+        //     .url = "https://pkg.machengine.org/mach-freetype/dc4a5d8ce14f8678f35bdaf197303091e22b1f27.tar.gz",
+        //     .hash = "122070070dd2c402d94c279d64d4a4d154691ad49f46fa2c24ed7c6e4e4f5c531477",
+        // },
     },
 }

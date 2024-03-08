@@ -4,7 +4,7 @@ const World = world_import.World;
 const Render = render_import.Render;
 const math = @import("math.zig");
 const FramerateCounter = @import("util/framerate_counter.zig");
-const sysaudio = @import("mach-sysaudio");
+const sysaudio = @import("mach").sysaudio;
 const Tool = @import("tools/Tool.zig");
 const DrawTool = @import("tools/DrawTool.zig");
 const FillTool = @import("tools/FillTool.zig");
@@ -17,7 +17,7 @@ const vi2f = math.vi2f;
 const vf2i = math.vf2i;
 
 const std = @import("std");
-const core = @import("mach-core");
+const core = @import("mach").core;
 const gpu = core.gpu;
 const zm = @import("zmath");
 const zigimg = @import("zigimg");
@@ -96,10 +96,10 @@ pub fn init(app: *App) !void {
     errdefer app.audio_ctx.deinit();
     try app.audio_ctx.refresh();
 
-    const device = app.audio_ctx.defaultDevice(.playback) orelse return error.NoDeviceFound;
-    app.player = try app.audio_ctx.createPlayer(device, writeFn, .{ .user_data = app });
-    errdefer app.player.deinit();
-    try app.player.start();
+    //const device = app.audio_ctx.defaultDevice(.playback) orelse return error.NoDeviceFound;
+    //app.player = try app.audio_ctx.createPlayer(device, writeFn, .{ .user_data = app });
+    //errdefer app.player.deinit();
+    //try app.player.start();
 
     const shader_module = core.device.createShaderModuleWGSL("shader.wgsl", @embedFile("shaders/indexed_image.wgsl"));
     defer shader_module.release();
@@ -189,7 +189,7 @@ pub fn init(app: *App) !void {
 pub fn deinit(app: *App) void {
     defer core.deinit();
 
-    app.player.deinit();
+    //app.player.deinit();
     app.audio_ctx.deinit();
     if(app.texture) |dt| dt.release();
     if(app.texture_view) |dtv| dtv.release();
@@ -198,17 +198,17 @@ pub fn deinit(app: *App) void {
     app.world.destroy();
 }
 
-fn writeFn(app_op: ?*anyopaque, frames: usize) void {
-    const app: *App = @as(*App, @ptrCast(@alignCast(app_op)));
-
-    for (0..frames) |frame| {
-        var sample: f32 = 0;
-        // sample rate = app.player.sampleRate()
-
-        // Emit the sample on all channels.
-        app.player.writeAll(frame, sample);
-    }
-}
+//fn writeFn(app_op: ?*anyopaque, frames: usize) void {
+//    const app: *App = @as(*App, @ptrCast(@alignCast(app_op)));
+//
+//    for (0..frames) |frame| {
+//        const sample: f32 = 0;
+//        // sample rate = app.player.sampleRate()
+//
+//        // Emit the sample on all channels.
+//        app.player.writeAll(frame, sample);
+//    }
+//}
 
 fn EnumBitSet(comptime Enum: type) type {
     return struct {

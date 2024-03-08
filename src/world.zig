@@ -1,6 +1,6 @@
 const std = @import("std");
 const math = @import("math.zig");
-const core = @import("mach-core");
+const core = @import("mach").core;
 // const world = @This();
 const render = @import("render.zig");
 const run_length_encode = @import("util/run_length_encode.zig");

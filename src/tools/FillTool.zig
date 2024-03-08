@@ -2,7 +2,7 @@ const FillTool = @This();
 const std = @import("std");
 const App = @import("../main2.zig");
 const math = @import("../math.zig");
-const core = @import("mach-core");
+const core = @import("mach").core;
 const world_mod = @import("../world.zig");
 const run_length_encode = @import("../util/run_length_encode.zig");
 

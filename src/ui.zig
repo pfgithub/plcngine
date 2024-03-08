@@ -7,16 +7,14 @@ const CHUNK_SIZE = world_import.CHUNK_SIZE;
 const App = @import("main2.zig");
 const render = @import("render.zig");
 
-const msdf = @cImport({
-    @cInclude("msdfgen_glue.h");
-});
+const msdf = @import("msdf").msdf;
 
 const x = math.x;
 const y = math.y;
 const z = math.z;
 const w = math.w;
 
-const core = @import("mach-core");
+const core = @import("mach").core;
 const gpu = core.gpu;
 const Atlas = @import("vendor/mach_gfx_atlas.zig");
 
