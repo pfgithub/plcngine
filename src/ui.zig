@@ -151,7 +151,7 @@ pub fn sample(ui: *UI, vertices: *std.ArrayList(App.Vertex)) !void {
         .draw_colors = 0o22223,
     }));
 
-    try textSample(&ui.text_render);
+    try textSample(ui, &ui.text_render, vertices);
 }
 
 fn once(comptime _: std.builtin.SourceLocation) bool {
@@ -164,8 +164,9 @@ fn once(comptime _: std.builtin.SourceLocation) bool {
 }
 
 const TextGlyph = struct {
-    bitmap: *msdf.cz_Bitmap3f,
-    fn init(text_render: *TextRender, glyph: u32) !TextGlyph {
+    region: Atlas.Region,
+
+    fn init(text_render: *TextRender, ui: *UI, glyph: u32) !TextGlyph {
         const shape: *msdf.cz_Shape = msdf.cz_createShape() orelse return error.LoadShape;
         defer msdf.cz_destroyShape(shape);
 
@@ -174,17 +175,40 @@ const TextGlyph = struct {
 
         msdf.cz_shapeNormalize(shape);
 
-        const bitmap: *msdf.cz_Bitmap3f = msdf.cz_createBitmap3f(16, 16) orelse return error.CreateBitmap;
-        errdefer msdf.cz_destroyBitmap3f(bitmap);
+        const MSDF_W = 16;
+        const MSDF_H = 16;
+        const MSDF_NCH = 3;
+
+        const bitmap: *msdf.cz_Bitmap3f = msdf.cz_createBitmap3f(MSDF_W, MSDF_H) orelse return error.CreateBitmap;
+        defer msdf.cz_destroyBitmap3f(bitmap);
 
         msdf.cz_generateMSDF(bitmap, shape, 1.0, 1.0, 4.0, 4.0, 4.0); // scale.x, scale.y, translation.x, translation.y, range
 
+        var tmp_res = try core.allocator.create([MSDF_W * MSDF_H * 4]u8);
+        defer core.allocator.destroy(tmp_res);
+
+        const bitmap_w = msdf.cz_bitmap3fWidth(bitmap);
+        const bitmap_h = msdf.cz_bitmap3fHeight(bitmap);
+        const bitmap_data_c = msdf.cz_bitmap3fPixels(bitmap);
+        const bitmap_data = bitmap_data_c[0..@as(usize, @intCast(bitmap_w)) * @as(usize, @intCast(bitmap_h)) * MSDF_NCH];
+        for(0..MSDF_H) |oy| {
+            for(0..MSDF_W) |ox| {
+                tmp_res[(oy * MSDF_W + ox) * 4 + 0] = std.math.lossyCast(u8, bitmap_data[(oy * MSDF_W + ox) * MSDF_NCH + 0] * 255);
+                tmp_res[(oy * MSDF_W + ox) * 4 + 1] = std.math.lossyCast(u8, bitmap_data[(oy * MSDF_W + ox) * MSDF_NCH + 1] * 255);
+                tmp_res[(oy * MSDF_W + ox) * 4 + 2] = std.math.lossyCast(u8, bitmap_data[(oy * MSDF_W + ox) * MSDF_NCH + 2] * 255);
+                tmp_res[(oy * MSDF_W + ox) * 4 + 3] = 1.0;
+            }
+        }
+
+        const region = try ui.atlas.reserve(core.allocator, MSDF_W, MSDF_H);
+        ui.atlas.set(region, tmp_res);
+
         return .{
-            .bitmap = bitmap,
+            .region = region,
         };
     }
     fn deinit(glyph: *TextGlyph) void {
-        msdf.cz_destroyBitmap3f(glyph.bitmap);
+        _ = glyph;
     }
 };
 const TextRender = struct {
@@ -221,41 +245,42 @@ const TextRender = struct {
         msdf.cz_deinitializeFreetype(text_render.ft);
     }
 
-    pub fn getOrRenderGlyph(text_render: *TextRender, glyph: u32) !TextGlyph {
+    pub fn getOrRenderGlyph(text_render: *TextRender, ui: *UI, glyph: u32) !TextGlyph {
         const result = try text_render.glyphs.getOrPut(glyph);
         if(!result.found_existing) {
             errdefer if(!text_render.glyphs.remove(glyph)) unreachable;
-            result.value_ptr.* = try TextGlyph.init(text_render, glyph);
+            result.value_ptr.* = try TextGlyph.init(text_render, ui, glyph);
         }
         return result.value_ptr.*;
     }
 };
 
-pub fn textSample(text_render: *TextRender) !void {
-    const glyph = try text_render.getOrRenderGlyph('B');
+pub fn textSample(ui: *UI, text_render: *TextRender, vertices: *std.ArrayList(App.Vertex)) !void {
+    const glyph = try text_render.getOrRenderGlyph(ui, 'B');
 
+    const uv = glyph.region.calculateUV(ui.atlas.size);
     if(once(@src())) {
-        std.log.info("msdfgen success! {d} {d}", .{
-            msdf.cz_bitmap3fWidth(glyph.bitmap),
-            msdf.cz_bitmap3fHeight(glyph.bitmap),
-            // msdf.cz_bitmap3fData(bitmap),
+        std.log.info("msdfgen success! {d} {d} {d} {d}, UV {d} {d} {d} {d}", .{
+            glyph.region.x,
+            glyph.region.y,
+            glyph.region.width,
+            glyph.region.height,
+
+            uv.x,
+            uv.y,
+            uv.width,
+            uv.height,
         });
     }
 
-
-    // TODO: add to texture atlas & render
-
-    // Shape shape;
-    // if (loadGlyph(shape, font, 'A')) {
-    //     shape.normalize();
-    //     //                      max. angle
-    //     edgeColoringSimple(shape, 3.0);
-    //     //           image width, height
-    //     Bitmap<float, 3> msdf(32, 32);
-    //     //                     range, scale, translation
-    //     generateMSDF(msdf, shape, 4.0, 1.0, Vector2(4.0, 4.0));
-    //     savePng(msdf, "output.png");
-    // }
+    try vertices.appendSlice(&render.vertexRect(.{
+        .ul = .{20, 20},
+        .br = .{36, 36},
+        .uv_ul = .{uv.x, uv.y},
+        .uv_br = .{uv.x + uv.width, uv.y + uv.height},
+        .draw_colors = 0x10000002,
+        // .draw_colors = 0o1234,
+    }));
 }
 
 // rendering:

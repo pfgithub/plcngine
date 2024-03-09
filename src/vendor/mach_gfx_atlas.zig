@@ -256,7 +256,7 @@ pub fn set(self: *Atlas, reg: Region, data: []const u8) void {
     while (i < reg.height) : (i += 1) {
         const tex_offset = (((reg.y + i) * self.size) + reg.x) * depth;
         const data_offset = i * reg.width * depth;
-        std.mem.copy(
+        std.mem.copyForwards(
             u8,
             self.data[tex_offset..],
             data[data_offset .. data_offset + (reg.width * depth)],

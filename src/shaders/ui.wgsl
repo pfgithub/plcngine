@@ -55,10 +55,10 @@ fn frag_main(
         return uniforms.colors[shiftres - 1];
     }else if(in.draw_colors == 0x10000001) {
         return sample;
-    // } else if(draw_colors == 0x10000002) {
-    // sample msdf
+    } else if(in.draw_colors == 0x10000002) {
+        // TODO msdf
+        return vec4(sample.xyz, 1.0);
     } else {
-    
         return vec4(1.0, 0.0, 1.0, 1.0); // error color
     }
 }
