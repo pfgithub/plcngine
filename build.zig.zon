@@ -17,12 +17,12 @@
             .hash = "12203f87e00caa6c07c02a748f234a5c0ee2ca5c334ec464e88810d93e7b5495a56f",
         },
         .mach = .{
-            .url = "https://pkg.machengine.org/mach/ea6a9438aa13ee83f9239d3aada352dcb9ea8b7c.tar.gz",
-            .hash = "1220a1ac8dba2fee590af6bafce6e1d5a768b93456e8877fe3d5402f19aec3d5d696",
+            .url = "https://pkg.machengine.org/mach/279290bbf2f1adab0af00323280a07d6bfff47a5.tar.gz",
+            .hash = "1220ba5472217ef81455b19d540967049bbfaf768b30d04534865707e907ee1c4aec",
         },
         .freetype = .{
-            .url = "https://pkg.machengine.org/freetype/398638fd1cb723e478658ea371fe3be1a4dce0ae.tar.gz",
-            .hash = "12208c57b72e3fb5c8d5d3e667e2e21ca1d9e2b6fc3f84182b320f63933f591823da",
+            .url = "https://pkg.machengine.org/freetype/a62aa6402fa0857723ac5556ddee98f038aec4e5.tar.gz",
+            .hash = "12209614e8bc8a6bde561b9c24b27a37f4ede244dba598b345cc56199fa7c6201f01",
         },
         // .mach_freetype = .{
         //     .url = "https://pkg.machengine.org/mach-freetype/dc4a5d8ce14f8678f35bdaf197303091e22b1f27.tar.gz",

@@ -78,6 +78,8 @@ pub fn init(app: *App) !void {
     try core.init(.{});
     instance = app;
 
+    core.setFrameRateLimit(60);
+
     // fn (ctx: @TypeOf(context), typ: ErrorType, message: [*:0]const u8) callconv(.Inline) void
     core.device.setUncapturedErrorCallback(app, struct{fn a(ctx: *App, typ: gpu.ErrorType, message: [*:0]const u8) callconv(.Inline) void {
         _ = ctx;
