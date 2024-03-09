@@ -1,3 +1,9 @@
+struct VertexInput {
+    @location(0) position : vec2<f32>,
+    @location(1) uv : vec2<f32>,
+    @location(2) draw_colors : u32,
+}
+
 struct VertexOutput {
     @builtin(position) Position : vec4<f32>,
     @location(0) uv : vec2<f32>,
@@ -14,20 +20,18 @@ struct Uniforms {
 
 @vertex
 fn vertex_main(
-    @location(0) position : vec2<f32>,
-    @location(1) uv : vec2<f32>,
-    @location(2) draw_colors : u32,
+    in: VertexInput,
 ) -> VertexOutput {
-    var output: VertexOutput;
+    var out: VertexOutput;
     // (0, 0) => (-1, 1)
     // (100, 100) => (1.0, -1.0)
-    var xy: vec2<f32> = position / uniforms.screen_size * 2.0 - 1.0;
+    var xy: vec2<f32> = in.position / uniforms.screen_size * 2.0 - 1.0;
 
-    output.Position = vec4(xy.x, 0.0 - xy.y, 0.0, 1.0);
-    output.uv = uv;
-    output.draw_colors = draw_colors;
+    out.Position = vec4(xy.x, 0.0 - xy.y, 0.0, 1.0);
+    out.uv = in.uv;
+    out.draw_colors = in.draw_colors;
 
-    return output;
+    return out;
 }
 
 @fragment
