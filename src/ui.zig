@@ -275,7 +275,7 @@ pub fn textSample(ui: *UI, text_render: *TextRender, vertices: *std.ArrayList(Ap
 
     try vertices.appendSlice(&render.vertexRect(.{
         .ul = .{20, 20},
-        .br = .{36, 36},
+        .br = .{20 + @as(f32, @floatFromInt(glyph.region.width)) * 2, 20 + @as(f32, @floatFromInt(glyph.region.height)) * 2},
         .uv_ul = .{uv.x, uv.y},
         .uv_br = .{uv.x + uv.width, uv.y + uv.height},
         .draw_colors = 0x10000002,
