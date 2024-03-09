@@ -330,6 +330,7 @@ const Controller = struct {
 
     play_mode: bool = false,
     player: Player = .{},
+    player_cam_v: Vec2f32 = .{0, 0},
 
     timer: ?std.time.Timer = null,
     ns: u64 = 0,
@@ -357,6 +358,9 @@ const Controller = struct {
 
         if(ih.frame.key_press.get(.tab) and ih.modsEql(.{})) {
             controller.play_mode = !controller.play_mode;
+            if(controller.play_mode) {
+                controller.player_cam_v = app.render.center_offset + (controller.player.pos - app.render.center_offset) * Vec2f32{2, 2};
+            }
         }
 
         if(!controller.play_mode) {
@@ -392,15 +396,19 @@ const Controller = struct {
             const target_offset = controller.player.pos - (vi2f(controller.player.size) / Vec2f32{2, 2});
             const target_zoom = 4.0;
 
-            const offset_dist = render.center_offset - target_offset;
+            const offset_dist = controller.player_cam_v - target_offset;
             const zoom_dist = render.center_scale - target_zoom;
 
             const delta_time_sec: f32 = @floatCast(@as(f64, @floatFromInt(delta_time_ns)) / 1e+9);
 
-            const delta = std.math.pow(f32, 0.01, delta_time_sec);
+            const delta_zoom = std.math.pow(f32, 0.01, delta_time_sec);
+            const delta_pan = std.math.pow(f32, 0.001, delta_time_sec);
 
-            render.center_offset = offset_dist * Vec2f32{delta, delta} + target_offset;
-            render.center_scale = zoom_dist * delta + target_zoom;
+            // [camera] [player] [target_camera_pos]
+            controller.player_cam_v = offset_dist * Vec2f32{delta_pan, delta_pan} + target_offset;
+            render.center_offset = controller.player_cam_v + (controller.player.pos - controller.player_cam_v) * Vec2f32{2, 2};
+            // TODO:    ensure player is always within central camera square
+            render.center_scale = zoom_dist * delta_zoom + target_zoom;
         }
     }
     fn tickPlayMode(controller: *Controller, app: *App) !void {

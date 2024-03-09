@@ -15,7 +15,8 @@ ui notes:
 todo:
 
 - [x] fix mem leak
-- [ ] make camera lead movement not follow it (while moving right, player shifts to the left of the screen based on speed)
+- [x] make camera lead movement not follow it (while moving right, player shifts to the left of the screen based on speed)
+  - not sure about this one
 - [ ] switch from location to names (assuming it's supported on the zig side)
 - ui stuff
  - [x] switch ui shader
