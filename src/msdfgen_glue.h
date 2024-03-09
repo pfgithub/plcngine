@@ -35,6 +35,7 @@ int cz_bitmap3fHeight(cz_Bitmap3f* bitmap);
 cz_Shape* cz_createShape();
 void cz_destroyShape(cz_Shape* shape);
 void cz_shapeNormalize(cz_Shape* shape);
+void cz_edgeColoringSimple(cz_Shape* shape, float max_angle);
 
 void cz_generateMSDF(cz_Bitmap3f* bitmap, const cz_Shape* shape, double scale_x, double scale_y, double translate_x, double translate_y, double range);
 

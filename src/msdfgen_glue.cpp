@@ -65,10 +65,13 @@ void cz_destroyShape(cz_Shape* shape) {
 void cz_shapeNormalize(cz_Shape* shape) {
     shape->instance.normalize();
 }
+void cz_edgeColoringSimple(cz_Shape* shape, float max_angle) {
+    edgeColoringSimple(shape->instance, max_angle);
+}
 
 void cz_generateMSDF(cz_Bitmap3f* bitmap, const cz_Shape* shape, double scale_x, double scale_y, double translate_x, double translate_y, double range) {
     generateMSDF(bitmap->instance, shape->instance, Projection(Vector2(scale_x, scale_y), Vector2(translate_x, translate_y)), range);
-    simulate8bit(bitmap->instance);
+    // simulate8bit(bitmap->instance);
 }
 
 } // extern "C"

@@ -174,15 +174,16 @@ const TextGlyph = struct {
         if(!msdf.cz_loadGlyph(shape, text_render.font, glyph, &advance)) return error.LoadGlyph;
 
         msdf.cz_shapeNormalize(shape);
+        msdf.cz_edgeColoringSimple(shape, 3.0); // max_angle
 
-        const MSDF_W = 16;
-        const MSDF_H = 16;
+        const MSDF_W = 32;
+        const MSDF_H = 32;
         const MSDF_NCH = 3;
 
         const bitmap: *msdf.cz_Bitmap3f = msdf.cz_createBitmap3f(MSDF_W, MSDF_H) orelse return error.CreateBitmap;
         defer msdf.cz_destroyBitmap3f(bitmap);
 
-        msdf.cz_generateMSDF(bitmap, shape, 1.0, 1.0, 4.0, 4.0, 4.0); // scale.x, scale.y, translation.x, translation.y, range
+        msdf.cz_generateMSDF(bitmap, shape, 2.0, 2.0, 2.0, 2.0, 4.0); // scale.x, scale.y, translation.x, translation.y, range
 
         var tmp_res = try core.allocator.create([MSDF_W * MSDF_H * 4]u8);
         defer core.allocator.destroy(tmp_res);
