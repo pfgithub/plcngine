@@ -25,7 +25,8 @@ const assets = struct {
     const gotta_go_fast_image = @embedFile("gotta-go-fast.png");
 };
 
-pub const Vertex = extern struct {
+// this does not have to be extern as @offsetOf is used
+pub const Vertex = struct {
     position: @Vector(2, f32),
     uv: @Vector(2, f32),
     draw_colors: u32,
@@ -33,6 +34,7 @@ pub const Vertex = extern struct {
 
 pub const App = @This();
 
+// this has to be extern, offsets are never used?
 pub const UniformBufferObject = extern struct {
     screen_size: @Vector(2, f32),
     colors: [4]@Vector(4, f32),
