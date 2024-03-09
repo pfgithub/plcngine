@@ -26,20 +26,9 @@ const assets = struct {
 };
 
 pub const Vertex = extern struct {
-    pos: @Vector(4, f32),
+    position: @Vector(2, f32),
     uv: @Vector(2, f32),
     draw_colors: u32,
-    rect_uv: @Vector(2, f32),
-
-    corner_1: @Vector(2, f32),
-    corner_2: @Vector(2, f32),
-    corner_3: @Vector(2, f32),
-    corner_4: @Vector(2, f32),
-
-    border_t: f32,
-    border_r: f32,
-    border_b: f32,
-    border_l: f32,
 };
 
 pub const App = @This();
@@ -103,24 +92,27 @@ pub fn init(app: *App) !void {
     //errdefer app.player.deinit();
     //try app.player.start();
 
-    const shader_module = core.device.createShaderModuleWGSL("shader.wgsl", @embedFile("shaders/indexed_image.wgsl"));
+    const shader_module = core.device.createShaderModuleWGSL("shaders/ui.wgsl", @embedFile("shaders/ui.wgsl"));
     defer shader_module.release();
 
     const vertex_attributes = [_]gpu.VertexAttribute{
-        .{ .format = .float32x4, .offset = @offsetOf(Vertex, "pos"), .shader_location = 0 },
-        .{ .format = .float32x2, .offset = @offsetOf(Vertex, "uv"), .shader_location = 1 },
-        .{ .format = .uint32, .offset = @offsetOf(Vertex, "draw_colors"), .shader_location = 2 },
-        .{ .format = .float32x2, .offset = @offsetOf(Vertex, "rect_uv"), .shader_location = 3 },
+        .{.format = .float32x2, .offset = @offsetOf(Vertex, "position"), .shader_location = 0},
+        .{.format = .float32x2, .offset = @offsetOf(Vertex, "uv"), .shader_location = 1},
+        .{.format = .uint32, .offset = @offsetOf(Vertex, "draw_colors"), .shader_location = 2},
+        // .{ .format = .float32x4, .offset = @offsetOf(Vertex, "pos"), .shader_location = 0 },
+        // .{ .format = .float32x2, .offset = @offsetOf(Vertex, "uv"), .shader_location = 1 },
+        // .{ .format = .uint32, .offset = @offsetOf(Vertex, "draw_colors"), .shader_location = 2 },
+        // .{ .format = .float32x2, .offset = @offsetOf(Vertex, "rect_uv"), .shader_location = 3 },
 
-        .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_1"), .shader_location = 4 },
-        .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_2"), .shader_location = 5 },
-        .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_3"), .shader_location = 6 },
-        .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_4"), .shader_location = 7 },
+        // .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_1"), .shader_location = 4 },
+        // .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_2"), .shader_location = 5 },
+        // .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_3"), .shader_location = 6 },
+        // .{ .format = .float32x2, .offset = @offsetOf(Vertex, "corner_4"), .shader_location = 7 },
 
-        .{ .format = .float32, .offset = @offsetOf(Vertex, "border_t"), .shader_location = 8 },
-        .{ .format = .float32, .offset = @offsetOf(Vertex, "border_r"), .shader_location = 9 },
-        .{ .format = .float32, .offset = @offsetOf(Vertex, "border_b"), .shader_location = 10 },
-        .{ .format = .float32, .offset = @offsetOf(Vertex, "border_l"), .shader_location = 11 },
+        // .{ .format = .float32, .offset = @offsetOf(Vertex, "border_t"), .shader_location = 8 },
+        // .{ .format = .float32, .offset = @offsetOf(Vertex, "border_r"), .shader_location = 9 },
+        // .{ .format = .float32, .offset = @offsetOf(Vertex, "border_b"), .shader_location = 10 },
+        // .{ .format = .float32, .offset = @offsetOf(Vertex, "border_l"), .shader_location = 11 },
     };
     const vertex_buffer_layout = gpu.VertexBufferLayout.init(.{
         .array_stride = @sizeOf(Vertex),

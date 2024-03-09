@@ -26,16 +26,6 @@ pub const RectOpts = struct {
     bl: ?Vec2f32 = null,
     br: Vec2f32,
     draw_colors: u32, // octal literal
-    border_radius: f32 = 0.0,
-    border_radius_ul: ?f32 = null,
-    border_radius_ur: ?f32 = null,
-    border_radius_bl: ?f32 = null,
-    border_radius_br: ?f32 = null,
-    border: f32 = 0.0,
-    border_t: ?f32 = null,
-    border_r: ?f32 = null,
-    border_b: ?f32 = null,
-    border_l: ?f32 = null,
 
     uv_ul: ?Vec2f32 = null,
     uv_br: ?Vec2f32 = null,
@@ -54,60 +44,37 @@ pub fn vertexRect(
     const uv_ur: Vec2f32 = Vec2f32{uv_br[x], uv_ul[y]};
     const uv_bl: Vec2f32 = Vec2f32{uv_ul[x], uv_br[y]};
 
-    const border_radius_ul = opts.border_radius_ul orelse opts.border_radius;
-    const border_radius_ur = opts.border_radius_ur orelse opts.border_radius;
-    const border_radius_bl = opts.border_radius_bl orelse opts.border_radius;
-    const border_radius_br = opts.border_radius_br orelse opts.border_radius;
-
-    const hy = br[y] - ul[y];
-    const hx = br[x] - ul[x];
-    const corner_1 = Vec2f32{border_radius_ul / hx, border_radius_ul / hy};
-    const corner_2 = Vec2f32{border_radius_ur / hx, border_radius_ur / hy};
-    const corner_3 = Vec2f32{border_radius_bl / hx, border_radius_bl / hy};
-    const corner_4 = Vec2f32{border_radius_br / hx, border_radius_br / hy};
-
-    const border_t: f32 = (opts.border_t orelse opts.border) / hy;
-    const border_r: f32 = (opts.border_r orelse opts.border) / hx;
-    const border_b: f32 = (opts.border_b orelse opts.border) / hy;
-    const border_l: f32 = (opts.border_l orelse opts.border) / hx;
-
     return [6]App.Vertex{
         .{
-            .pos = .{ ul[x], ul[y], 0, 1 }, .uv = uv_ul, .rect_uv = .{ 0, 0 },
+            .position = .{ ul[x], ul[y] },
+            .uv = uv_ul,
             .draw_colors = draw_colors,
-            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
-            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
         .{
-            .pos = .{ bl[x], bl[y], 0, 1 }, .uv = uv_bl, .rect_uv = .{ 0, 1 },
+            .position = .{ bl[x], bl[y] },
+            .uv = uv_bl,
             .draw_colors = draw_colors,
-            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
-            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
         .{
-            .pos = .{ ur[x], ur[y], 0, 1 }, .uv = uv_ur, .rect_uv = .{ 1, 0 },
+            .position = .{ ur[x], ur[y] },
+            .uv = uv_ur,
             .draw_colors = draw_colors,
-            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
-            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
 
         .{
-            .pos = .{ bl[x], bl[y], 0, 1 }, .uv = uv_bl, .rect_uv = .{ 0, 1 },
+            .position = .{ bl[x], bl[y] },
+            .uv = uv_bl,
             .draw_colors = draw_colors,
-            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
-            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
         .{
-            .pos = .{ br[x], br[y], 0, 1 }, .uv = uv_br, .rect_uv = .{ 1, 1 },
+            .position = .{ br[x], br[y] },
+            .uv = uv_br,
             .draw_colors = draw_colors,
-            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
-            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
         .{
-            .pos = .{ ur[x], ur[y], 0, 1 }, .uv = uv_ur, .rect_uv = .{ 1, 0 },
+            .position = .{ ur[x], ur[y] },
+            .uv = uv_ur,
             .draw_colors = draw_colors,
-            .corner_1 = corner_1, .corner_2 = corner_2, .corner_3 = corner_3, .corner_4 = corner_4,
-            .border_t = border_t, .border_r = border_r, .border_b = border_b, .border_l = border_l,
         },
     };
 }
