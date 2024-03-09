@@ -32,18 +32,14 @@ fn vertex_main(
 
 @fragment
 fn frag_main(
-    // why do we have to copy all of this when it's in vertexoutput already?
-    // can we just `in: VertexOutput`?
-    @location(0) uv: vec2<f32>,
-    @location(1) @interpolate(flat) draw_colors: u32,
+    in: VertexOutput,
 ) -> @location(0) vec4<f32> {
-    var sample = textureSample(myTexture, mySampler, uv);
+    var sample = textureSample(myTexture, mySampler, in.uv);
 
-
-    if(draw_colors <= 0x0FFFFFFF) {
+    if(in.draw_colors <= 0x0FFFFFFF) {
         // 0=transparent,1=colors[0],2=colors[1],3=colors[2],4=colors[3],5=reserved,6=reserved,7=reserved
         var index = u32(sample.r * 255.0);
-        var shiftres = (draw_colors >> (index * 3)) & 7;
+        var shiftres = (in.draw_colors >> (index * 3)) & 7;
         if(shiftres == 0) {
             // return vec4<f32>(sample.r * 50.0, uv.xy, 1.0);
             discard;
@@ -53,7 +49,7 @@ fn frag_main(
             return vec4<f32>(1.0, 0.0, 1.0, 1.0); // error color
         }
         return uniforms.colors[shiftres - 1];
-    }else if(draw_colors == 0x10000001) {
+    }else if(in.draw_colors == 0x10000001) {
         return sample;
     // } else if(draw_colors == 0x10000002) {
     // sample msdf
