@@ -14,3 +14,5 @@ todo:
 - [ ] fix mem leak
 - [ ] make camera lead movement not follow it (while moving right, player shifts to the left of the screen based on speed)
 - ui stuff
+- [ ] in texture sampling, around the border of two pixels blend the colors
+  - [ ] here it would be nice if the textures stored color data because then we could use the default sampler
