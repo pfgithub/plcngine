@@ -72,6 +72,7 @@ pub fn floodFill(chunk: *world_mod.Chunk, start_pos: Vec2i, replace_color: u8, w
     // - a blocker between the last pixel in the list
 
     var setpixel_list = std.ArrayList(Vec2i).init(core.allocator);
+    defer setpixel_list.deinit();
     try setpixel_list.append(start_pos);
 
     var iter_count: usize = 0;
