@@ -122,6 +122,13 @@ pub const Render = struct {
     center_scale: f32 = 1.0,
     window_size: Vec2f32 = .{0, 0},
 
+    colors: [4]@Vector(4, f32) = [4]@Vector(4, f32){
+        color(0x002C0A_FF),
+        color(0x00821F_FF),
+        color(0x48FFA7_FF),
+        color(0xCCFFE5_FF),
+    },
+
     uniform_buffer: ?*gpu.Buffer = null,
     world: *World,
     app: *App,
@@ -183,12 +190,7 @@ pub const Render = struct {
         }
         encoder.writeBuffer(render.uniform_buffer.?, 0, &[_]App.UniformBufferObject{.{
             .screen_size = render.window_size,
-            .colors = .{
-                color(0x002C0A_FF),
-                color(0x00821F_FF),
-                color(0x48FFA7_FF),
-                color(0xCCFFE5_FF),
-            },
+            .colors = render.colors
         }});
 
         try render.prepareWorld(encoder);

@@ -360,6 +360,11 @@ const Controller = struct {
     fill_tool_data: FillTool = .{},
     current_tool: Tool,
 
+    data: struct {
+        primary_color: u8 = 1,
+        secondary_color: u8 = 0,
+    } = .{},
+
     play_mode: bool = false,
     player: Player = .{},
     player_cam_v: Vec2f32 = .{0, 0},
@@ -596,6 +601,66 @@ pub fn update(app: *App) !bool {
         _ = imgui.dockSpaceOverViewportEx(null, imgui.DockNodeFlags_PassthruCentralNode, null);
 
         imgui.showDemoWindow(null);
+
+        if(imgui.begin("Demo", null, 0)) {
+            if(imgui.button("Save")) {
+                try app.world.saveAll();
+            }
+            if(imgui.button("Line Tool")) {
+                app.controller.current_tool = Tool.wrap(DrawTool, &app.controller.draw_tool_data);
+            }
+            if(imgui.button("Fill Tool")) {
+                app.controller.current_tool = Tool.wrap(FillTool, &app.controller.fill_tool_data);
+            }
+
+            imgui.text("Colors:");
+            for(&app.render.colors, [_][:0]const u8{"1", "2", "3", "4"}) |*color, label| {
+                var imcolor: [3]f32 = .{color.*[0], color.*[1], color.*[2]};
+                imgui.sameLine();
+                _ = imgui.colorEdit3(label, &imcolor, imgui.ColorEditFlags_NoInputs | imgui.ColorEditFlags_NoLabel | imgui.ColorEditFlags_PickerHueWheel);
+                color.* = .{imcolor[0], imcolor[1], imcolor[2], color.*[3]};
+            }
+
+            {
+                const ih = &app.ih;
+                const target_color_opt: ?*u8 = if(ih.modsEql(.{})) (
+                    &app.controller.data.primary_color
+                ) else if(ih.modsEql(.{.shift = true})) (
+                    &app.controller.data.secondary_color
+                ) else null;
+                if(target_color_opt) |target_color| {
+                    if(ih.frame.key_press.get(.zero)) target_color.* = 0;
+                    if(ih.frame.key_press.get(.one)) target_color.* = 1;
+                    if(ih.frame.key_press.get(.two)) target_color.* = 2;
+                    if(ih.frame.key_press.get(.three)) target_color.* = 3;
+                    if(ih.frame.key_press.get(.four)) target_color.* = 4;
+                }
+            }
+
+            imgui.text("Primary:");
+            if(imgui.colorButton("primary-0", .{.x = 0, .y = 0, .z = 0, .w = 0}, 0)) app.controller.data.primary_color = 0;
+            imgui.sameLine();
+            if(imgui.colorButton("primary-1", .{.x = app.render.colors[0][0], .y = app.render.colors[0][1], .z = app.render.colors[0][2], .w = 1.0}, 0)) app.controller.data.primary_color = 1;
+            imgui.sameLine();
+            if(imgui.colorButton("primary-2", .{.x = app.render.colors[1][0], .y = app.render.colors[1][1], .z = app.render.colors[1][2], .w = 1.0}, 0)) app.controller.data.primary_color = 2;
+            imgui.sameLine();
+            if(imgui.colorButton("primary-3", .{.x = app.render.colors[2][0], .y = app.render.colors[2][1], .z = app.render.colors[2][2], .w = 1.0}, 0)) app.controller.data.primary_color = 3;
+            imgui.sameLine();
+            if(imgui.colorButton("primary-4", .{.x = app.render.colors[3][0], .y = app.render.colors[3][1], .z = app.render.colors[3][2], .w = 1.0}, 0)) app.controller.data.primary_color = 4;
+            imgui.text("Secondary:");
+            if(imgui.colorButton("secondary-0", .{.x = 0, .y = 0, .z = 0, .w = 0}, 0)) app.controller.data.secondary_color = 0;
+            imgui.sameLine();
+            if(imgui.colorButton("secondary-1", .{.x = app.render.colors[0][0], .y = app.render.colors[0][1], .z = app.render.colors[0][2], .w = 1.0}, 0)) app.controller.data.secondary_color = 1;
+            imgui.sameLine();
+            if(imgui.colorButton("secondary-2", .{.x = app.render.colors[1][0], .y = app.render.colors[1][1], .z = app.render.colors[1][2], .w = 1.0}, 0)) app.controller.data.secondary_color = 2;
+            imgui.sameLine();
+            if(imgui.colorButton("secondary-3", .{.x = app.render.colors[2][0], .y = app.render.colors[2][1], .z = app.render.colors[2][2], .w = 1.0}, 0)) app.controller.data.secondary_color = 3;
+            imgui.sameLine();
+            if(imgui.colorButton("secondary-4", .{.x = app.render.colors[3][0], .y = app.render.colors[3][1], .z = app.render.colors[3][2], .w = 1.0}, 0)) app.controller.data.secondary_color = 4;
+
+            try app.controller.current_tool.renderUI(app);
+        }
+        imgui.end();
 
         imgui.render();
     }

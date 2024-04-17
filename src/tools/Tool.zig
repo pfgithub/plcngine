@@ -6,6 +6,7 @@ const App = @import("../main2.zig");
 const Vtable = struct {
     deinit: *const fn(tool: *Data) void,
     update: *const fn(tool: *Data, app: *App) anyerror!void,
+    renderUI: *const fn(tool: *Data, app: *App) anyerror!void,
 };
 const Data = opaque {};
 
@@ -19,12 +20,18 @@ pub fn wrap(comptime ToolType: type, tool_data: *ToolType) Tool {
             return ToolType.deinit(@ptrCast(@alignCast(tool)));
         }
         fn vtable_update(tool: *Data, app: *App) anyerror!void {
+            if(!@hasDecl(ToolType, "update")) return;
             return ToolType.update(@ptrCast(@alignCast(tool)), app);
+        }
+        fn vtable_renderUI(tool: *Data, app: *App) anyerror!void {
+            if(!@hasDecl(ToolType, "renderUI")) return;
+            return ToolType.renderUI(@ptrCast(@alignCast(tool)), app);
         }
 
         const vtable = Vtable {
             .deinit = &vtable_deinit,
             .update = &vtable_update,
+            .renderUI = &vtable_renderUI,
         };
     };
     return .{
@@ -38,4 +45,7 @@ pub fn deinit(tool: *Tool) !void {
 }
 pub fn update(tool: *Tool, app: *App) !void {
     return tool.vtable.update(tool.data, app);
+}
+pub fn renderUI(tool: *Tool, app: *App) !void {
+    return tool.vtable.renderUI(tool.data, app);
 }

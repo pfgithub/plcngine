@@ -10,15 +10,13 @@ const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
 const vf2i = math.vf2i;
 
-fill_primary_color: u8 = 1,
-fill_secondary_color: u8 = 0,
-
 pub fn deinit(_: *FillTool) void {}
 
-pub fn update(tool: *FillTool, app: *App) !void {
+pub fn update(_: *FillTool, app: *App) !void {
     const render = app.render;
     const world = app.world;
     const ih = &app.ih;
+    const controller = app.controller;
 
     const mp = app.ih.mouse_pos orelse Vec2f32{-1, -1};
 
@@ -26,26 +24,11 @@ pub fn update(tool: *FillTool, app: *App) !void {
     const target_chunk, const start_pos = try world.getChunkAtPixel(world_pos);
     // if(controls.pen_held_primary or controls.pen_held_secondary)
     if((ih.frame.mouse_press.get(.left) or ih.frame.mouse_press.get(.right)) and ih.modsEql(.{})) {
-        const target_color = if(ih.frame.mouse_press.get(.left)) tool.fill_primary_color else tool.fill_secondary_color;
+        const target_color = if(ih.frame.mouse_press.get(.left)) controller.data.primary_color else controller.data.secondary_color;
         const current_color = target_chunk.getPixel(start_pos);
 
         const operation = try floodFill(target_chunk, start_pos, current_color, target_color);
         if(operation) |*op| try world.history.applyOperation(op.*);
-    }
-
-    {
-        const target_color_opt: ?*u8 = if(ih.modsEql(.{})) (
-            &tool.fill_primary_color
-        ) else if(ih.modsEql(.{.shift = true})) (
-            &tool.fill_secondary_color
-        ) else null;
-        if(target_color_opt) |target_color| {
-            if(ih.frame.key_press.get(.zero)) target_color.* = 0;
-            if(ih.frame.key_press.get(.one)) target_color.* = 1;
-            if(ih.frame.key_press.get(.two)) target_color.* = 2;
-            if(ih.frame.key_press.get(.three)) target_color.* = 3;
-            if(ih.frame.key_press.get(.four)) target_color.* = 4;
-        }
     }
 }
 
