@@ -14,16 +14,16 @@
         //     .hash = "1220f05bb06ce2704ae7b183514ce415719469bf1fa025b3158c55f7cc4755cb1fa5",
         // },
         .mach = .{
-            .url = "https://pkg.machengine.org/mach/279290bbf2f1adab0af00323280a07d6bfff47a5.tar.gz",
-            .hash = "1220ba5472217ef81455b19d540967049bbfaf768b30d04534865707e907ee1c4aec",
+            .url = "https://pkg.machengine.org/mach/f1dbc3955ce039c059a2fd7671332d6ca1f7b670.tar.gz",
+            .hash = "1220cf971662ac5aa42608291a418404f0b0d7a7d47fe3d12716083594dfe7015dde",
         },
         .freetype = .{
             .url = "https://pkg.machengine.org/freetype/398638fd1cb723e478658ea371fe3be1a4dce0ae.tar.gz",
             .hash = "12208c57b72e3fb5c8d5d3e667e2e21ca1d9e2b6fc3f84182b320f63933f591823da",
         },
-        .imgui = .{
-            .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.90.4-docking.tar.gz",
-            .hash = "122059777064e1e404a7ecc87a5f27d421871ce7dff0f4d5a9068f4156b359ef465f",
+        .zig_imgui = .{
+            .url = "https://github.com/pfgithub/zig-imgui/archive/b17e440679b2af4ce610aeeec4e67035f0afb5b0.tar.gz",
+            .hash = "1220fee0b3c4fcb456b062992bc65b5a4e8ca5c4e7e78c17229d249957cc0a732b81",
         },
     },
 }

@@ -9,6 +9,9 @@ const DrawTool = @import("tools/DrawTool.zig");
 const FillTool = @import("tools/FillTool.zig");
 const platformer = @import("platformer.zig");
 
+const imgui = @import("zig-imgui");
+const imgui_mach = imgui.backends.mach;
+
 const Player = platformer.Player;
 const Vec2i = math.Vec2i;
 const Vec2f32 = math.Vec2f32;
@@ -61,7 +64,8 @@ frc: FramerateCounter,
 /// to get smooth pixel art when at edges.
 ///
 /// https://godotshaders.com/shader/smooth-3d-pixel-filtering/
-const sample_count = 4;
+// const sample_count = 4;
+const sample_count = 1;
 
 pub var instance: *App = undefined;
 pub fn init(app: *App) !void {
@@ -178,6 +182,17 @@ pub fn init(app: *App) !void {
     app.texture_view = null;
     app.frc = FramerateCounter.init();
 
+    {
+        // imgui.setZigAllocator(&core.allocator);
+        _ = imgui.createContext(null);
+        try imgui_mach.init(core.allocator, core.device, .{});
+
+        var io = imgui.getIO();
+        io.config_windows_move_from_title_bar_only = true;
+        io.config_flags |= imgui.ConfigFlags_NavEnableKeyboard | imgui.ConfigFlags_DockingEnable;
+        io.font_global_scale = 1.0 / io.display_framebuffer_scale.y;
+    }
+
     core.device.tick();
 }
 
@@ -191,6 +206,9 @@ pub fn deinit(app: *App) void {
     app.render.destroy();
     app.controller.destroy();
     app.world.destroy();
+
+    imgui_mach.shutdown();
+    imgui.destroyContext(null);
 }
 
 fn writeFn(app_op: ?*anyopaque, frames: usize) void {
@@ -274,29 +292,40 @@ const InputHelper = struct {
         ih.frame = .{};
     }
     fn update(ih: *InputHelper, event: core.Event) !void {
+        _ = imgui_mach.processEvent(event);
+        const io = imgui.getIO();
         switch(event) {
             .key_press => |ev| {
-                ih.keys_held.set(ev.key, true);
-                ih.frame.key_press.set(ev.key, true);
+                if(!io.want_capture_keyboard) {
+                    ih.keys_held.set(ev.key, true);
+                    ih.frame.key_press.set(ev.key, true);
+                }
             },
             .key_repeat => |ev| {
-                ih.frame.key_repeat.set(ev.key, true);
+                if(!io.want_capture_keyboard) {
+                    ih.frame.key_repeat.set(ev.key, true);
+                }
             },
             .key_release => |ev| {
                 ih.keys_held.set(ev.key, false);
-                ih.frame.key_release.set(ev.key, true);
+                if(!io.want_capture_keyboard) {
+                    ih.frame.key_release.set(ev.key, true);
+                }
             },
             .mouse_press => |ev| {
-                ih.mouse_held.set(ev.button, true);
-                ih.frame.mouse_press.set(ev.button, true);
-
+                if(!io.want_capture_mouse) {
+                    ih.mouse_held.set(ev.button, true);
+                    ih.frame.mouse_press.set(ev.button, true);
+                }
                 const new_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
                 if(ih.mouse_pos) |prev_pos| ih.frame.mouse_delta += new_pos - prev_pos;
                 ih.mouse_pos = new_pos;
             },
             .mouse_release => |ev| {
                 ih.mouse_held.set(ev.button, false);
-                ih.frame.mouse_release.set(ev.button, true);
+                if(!io.want_capture_mouse) {
+                    ih.frame.mouse_release.set(ev.button, true);
+                }
 
                 const new_pos = Vec2f32{@floatCast(ev.pos.x), @floatCast(ev.pos.y)};
                 if(ih.mouse_pos) |prev_pos| ih.frame.mouse_delta += new_pos - prev_pos;
@@ -308,7 +337,9 @@ const InputHelper = struct {
                 ih.mouse_pos = new_pos;
             },
             .mouse_scroll => |ev| {
-                ih.frame.mouse_scroll = Vec2f32{ev.xoffset, ev.yoffset};
+                if(!io.want_capture_mouse) {
+                    ih.frame.mouse_scroll += Vec2f32{ev.xoffset, ev.yoffset};
+                }
             },
             else => {},
         }
@@ -558,6 +589,17 @@ pub fn update(app: *App) !bool {
         .store_op = if(sample_count == 1) .store else .discard,
     };
 
+    imblk: {
+        imgui_mach.newFrame() catch break :imblk;
+        imgui.newFrame();
+
+        _ = imgui.dockSpaceOverViewportEx(null, imgui.DockNodeFlags_PassthruCentralNode, null);
+
+        imgui.showDemoWindow(null);
+
+        imgui.render();
+    }
+
     const encoder = core.device.createCommandEncoder(null);
     const render_pass_info = gpu.RenderPassDescriptor.init(.{
         .color_attachments = &.{color_attachment},
@@ -568,6 +610,7 @@ pub fn update(app: *App) !bool {
     const pass: *gpu.RenderPassEncoder = encoder.beginRenderPass(&render_pass_info);
     pass.setPipeline(app.pipeline);
     try app.render.renderApp(pass);
+    imgui_mach.renderDrawData(imgui.getDrawData().?, pass) catch {};
     pass.end();
     pass.release();
 
