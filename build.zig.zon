@@ -8,25 +8,22 @@
         "README.md",
     },
     .dependencies = .{
-        .msdfgen = .{
-            .url = "https://github.com/Chlumsky/msdfgen/archive/052f5fffd78066fbd276504cfc099cca006274b5.tar.gz",
-            .hash = "12205138bd6276b716921d78586aa272d11dc9e848086fb9cb56f41f6be7869b466e",
-        },
-        .libxev = .{
-            .url = "https://github.com/mitchellh/libxev/archive/4e6781895e4e6c477597c8c2713d36cd82b57d07.tar.gz",
-            .hash = "12203f87e00caa6c07c02a748f234a5c0ee2ca5c334ec464e88810d93e7b5495a56f",
-        },
+        // zig version too new
+        // .libxev = .{
+        //     .url = "https://github.com/mitchellh/libxev/archive/63e8dd89fae48e90fbd12469c2e3ff9415b832bf.tar.gz",
+        //     .hash = "1220f05bb06ce2704ae7b183514ce415719469bf1fa025b3158c55f7cc4755cb1fa5",
+        // },
         .mach = .{
             .url = "https://pkg.machengine.org/mach/279290bbf2f1adab0af00323280a07d6bfff47a5.tar.gz",
             .hash = "1220ba5472217ef81455b19d540967049bbfaf768b30d04534865707e907ee1c4aec",
         },
         .freetype = .{
-            .url = "https://pkg.machengine.org/freetype/a62aa6402fa0857723ac5556ddee98f038aec4e5.tar.gz",
-            .hash = "12209614e8bc8a6bde561b9c24b27a37f4ede244dba598b345cc56199fa7c6201f01",
+            .url = "https://pkg.machengine.org/freetype/398638fd1cb723e478658ea371fe3be1a4dce0ae.tar.gz",
+            .hash = "12208c57b72e3fb5c8d5d3e667e2e21ca1d9e2b6fc3f84182b320f63933f591823da",
         },
-        // .mach_freetype = .{
-        //     .url = "https://pkg.machengine.org/mach-freetype/dc4a5d8ce14f8678f35bdaf197303091e22b1f27.tar.gz",
-        //     .hash = "122070070dd2c402d94c279d64d4a4d154691ad49f46fa2c24ed7c6e4e4f5c531477",
-        // },
+        .imgui = .{
+            .url = "https://github.com/ocornut/imgui/archive/refs/tags/v1.90.4-docking.tar.gz",
+            .hash = "122059777064e1e404a7ecc87a5f27d421871ce7dff0f4d5a9068f4156b359ef465f",
+        },
     },
 }

@@ -4,7 +4,6 @@ const World = world_import.World;
 const Render = render_import.Render;
 const math = @import("math.zig");
 const FramerateCounter = @import("util/framerate_counter.zig");
-const sysaudio = @import("mach").sysaudio;
 const Tool = @import("tools/Tool.zig");
 const DrawTool = @import("tools/DrawTool.zig");
 const FillTool = @import("tools/FillTool.zig");
@@ -47,8 +46,8 @@ pipeline: *gpu.RenderPipeline,
 queue: *gpu.Queue,
 texture: ?*gpu.Texture,
 texture_view: ?*gpu.TextureView,
-audio_ctx: sysaudio.Context,
-player: sysaudio.Player,
+// audio_ctx: sysaudio.Context,
+// player: sysaudio.Player,
 title_buf: [32:0]u8,
 
 world: *World,
@@ -85,14 +84,14 @@ pub fn init(app: *App) !void {
     app.render = try Render.create(core.allocator, app.world, app);
     errdefer app.render.destroy();
 
-    app.audio_ctx = try sysaudio.Context.init(null, core.allocator, .{});
-    errdefer app.audio_ctx.deinit();
-    try app.audio_ctx.refresh();
+    // app.audio_ctx = try sysaudio.Context.init(null, core.allocator, .{});
+    // errdefer app.audio_ctx.deinit();
+    // try app.audio_ctx.refresh();
 
-    //const device = app.audio_ctx.defaultDevice(.playback) orelse return error.NoDeviceFound;
-    //app.player = try app.audio_ctx.createPlayer(device, writeFn, .{ .user_data = app });
-    //errdefer app.player.deinit();
-    //try app.player.start();
+    // const device = app.audio_ctx.defaultDevice(.playback) orelse return error.NoDeviceFound;
+    // app.player = try app.audio_ctx.createPlayer(device, writeFn, .{ .user_data = app });
+    // errdefer app.player.deinit();
+    // try app.player.start();
 
     const shader_module = core.device.createShaderModuleWGSL("shaders/ui.wgsl", @embedFile("shaders/ui.wgsl"));
     defer shader_module.release();
@@ -185,8 +184,8 @@ pub fn init(app: *App) !void {
 pub fn deinit(app: *App) void {
     defer core.deinit();
 
-    //app.player.deinit();
-    app.audio_ctx.deinit();
+    // app.player.deinit();
+    // app.audio_ctx.deinit();
     if(app.texture) |dt| dt.release();
     if(app.texture_view) |dtv| dtv.release();
     app.render.destroy();
@@ -194,17 +193,17 @@ pub fn deinit(app: *App) void {
     app.world.destroy();
 }
 
-//fn writeFn(app_op: ?*anyopaque, frames: usize) void {
-//    const app: *App = @as(*App, @ptrCast(@alignCast(app_op)));
-//
-//    for (0..frames) |frame| {
-//        const sample: f32 = 0;
-//        // sample rate = app.player.sampleRate()
-//
-//        // Emit the sample on all channels.
-//        app.player.writeAll(frame, sample);
-//    }
-//}
+fn writeFn(app_op: ?*anyopaque, frames: usize) void {
+    const app: *App = @as(*App, @ptrCast(@alignCast(app_op)));
+
+    for (0..frames) |frame| {
+        const sample: f32 = 0;
+        // sample rate = app.player.sampleRate()
+
+        // Emit the sample on all channels.
+        app.player.writeAll(frame, sample);
+    }
+}
 
 fn EnumBitSet(comptime Enum: type) type {
     return struct {

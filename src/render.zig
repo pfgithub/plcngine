@@ -5,7 +5,6 @@ const World = world_import.World;
 const Chunk = world_import.Chunk;
 const CHUNK_SIZE = world_import.CHUNK_SIZE;
 const App = @import("main2.zig");
-const interface = @import("ui.zig");
 
 const x = math.x;
 const y = math.y;
@@ -124,7 +123,6 @@ pub const Render = struct {
     window_size: Vec2f32 = .{0, 0},
 
     uniform_buffer: ?*gpu.Buffer = null,
-    ui: interface.UI,
     world: *World,
     app: *App,
     overlay: RenderOverlay = .{},
@@ -135,14 +133,11 @@ pub const Render = struct {
             .alloc = alloc,
             .world = world,
             .app = app,
-            .ui = undefined,
         };
-        try interface.UI.init(&render.ui);
         return render;
     }
     pub fn destroy(render: *Render) void {
         if(render.uniform_buffer) |b| b.release();
-        render.ui.deinit();
         render.alloc.destroy(render);
     }
 
@@ -198,7 +193,6 @@ pub const Render = struct {
 
         try render.prepareWorld(encoder);
         try render.overlay.prepareOverlay(encoder, render);
-        try render.ui.prepare(encoder, render.uniform_buffer.?);
     }
 
     pub fn prepareWorld(render: *Render,
@@ -298,7 +292,6 @@ pub const Render = struct {
     ) !void {
         try render.renderWorld(pass);
         try render.overlay.renderOverlay(pass);
-        try render.ui.render(pass);
     }
 
     pub fn renderWorld(render: *Render,
