@@ -190,7 +190,6 @@ pub fn init(app: *App) !void {
         var io = imgui.getIO();
         io.config_windows_move_from_title_bar_only = true;
         io.config_flags |= imgui.ConfigFlags_NavEnableKeyboard | imgui.ConfigFlags_DockingEnable;
-        io.font_global_scale = 1.0 / io.display_framebuffer_scale.y;
     }
 
     core.device.tick();
