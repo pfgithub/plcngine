@@ -20,7 +20,7 @@ const vf2i = math.vf2i;
 
 const std = @import("std");
 const core = @import("mach").core;
-const gpu = core.gpu;
+const gpu = @import("mach").gpu;
 const zm = @import("zmath");
 const zigimg = @import("zigimg");
 const assets = struct {

@@ -14,16 +14,16 @@
         //     .hash = "1220f05bb06ce2704ae7b183514ce415719469bf1fa025b3158c55f7cc4755cb1fa5",
         // },
         .mach = .{
-            .url = "https://pkg.machengine.org/mach/f1dbc3955ce039c059a2fd7671332d6ca1f7b670.tar.gz",
-            .hash = "1220cf971662ac5aa42608291a418404f0b0d7a7d47fe3d12716083594dfe7015dde",
+            .url = "https://pkg.machengine.org/mach/b72f0e11b6d292c2b60789359a61f7ee6d7dc371.tar.gz",
+            .hash = "122015e1dac4afaf275f7f2adde3814e6a27f5799cbef96bb487ee305f7e33f4dca3",
         },
         .freetype = .{
-            .url = "https://pkg.machengine.org/freetype/398638fd1cb723e478658ea371fe3be1a4dce0ae.tar.gz",
-            .hash = "12208c57b72e3fb5c8d5d3e667e2e21ca1d9e2b6fc3f84182b320f63933f591823da",
+            .url = "https://pkg.machengine.org/freetype/e8c5b37f320db03acba410d993441815bc809606.tar.gz",
+            .hash = "1220babb7939707ca390b934657dfd3c8c3a6a78cc9442e4cbd43e3f9ffd49daec9e",
         },
         .zig_imgui = .{
-            .url = "https://github.com/pfgithub/zig-imgui/archive/b17e440679b2af4ce610aeeec4e67035f0afb5b0.tar.gz",
-            .hash = "1220fee0b3c4fcb456b062992bc65b5a4e8ca5c4e7e78c17229d249957cc0a732b81",
+            .url = "https://github.com/pfgithub/zig-imgui/archive/eb06d20cbcdd03992c3008ee01fefeec0f4bf05e.tar.gz",
+            .hash = "1220f65947970e8ff34784892e0a032573eb6fde3fba581d176e12bb2e9629695993",
         },
     },
 }
